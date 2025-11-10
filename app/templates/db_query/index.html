@@ -1,0 +1,292 @@
+{% extends "base.html" %}
+
+{% block title %}Database Query Tool - SQL{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1 class="mb-4">
+            <i class="bi bi-terminal"></i> Database Query Tool
+        </h1>
+        <p class="text-muted">Execute queries SQL no RDS através do Bastion Host</p>
+    </div>
+</div>
+
+<!-- Alertas -->
+<div id="alertContainer"></div>
+
+<!-- Card de Conexão -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-plug"></i> Conexão com Banco de Dados</h5>
+            </div>
+            <div class="card-body">
+                <!-- Select de Túneis Salvos -->
+                <div class="row mb-3">
+                    <div class="col-md-10">
+                        <label for="savedTunnels" class="form-label">
+                            <i class="bi bi-bookmark"></i> Túneis Salvos
+                        </label>
+                        <select class="form-select" id="savedTunnels">
+                            <option value="">Selecione um túnel salvo...</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="button" class="btn btn-outline-danger w-100" id="deleteTunnelBtn" disabled>
+                            <i class="bi bi-trash"></i> Deletar
+                        </button>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <form id="connectionForm">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label for="engine" class="form-label">Engine *</label>
+                            <select class="form-select" id="engine" required>
+                                <option value="">Selecione...</option>
+                                <option value="mysql">MySQL</option>
+                                <option value="postgres">PostgreSQL</option>
+                                <option value="mariadb">MariaDB</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-3 mb-3">
+                            <label for="host" class="form-label">Host *</label>
+                            <input type="text" class="form-control" id="host" value="localhost" required>
+                            <small class="text-muted">Use localhost se via túnel</small>
+                        </div>
+                        
+                        <div class="col-md-2 mb-3">
+                            <label for="port" class="form-label">Porta *</label>
+                            <input type="number" class="form-control" id="port" value="3306" required>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="database" class="form-label">Banco de Dados *</label>
+                            <input type="text" class="form-control" id="database" required>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="username" class="form-label">Usuário *</label>
+                            <input type="text" class="form-control" id="username" required>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="password" class="form-label">Senha *</label>
+                            <input type="password" class="form-control" id="password" required>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-success" id="testConnectionBtn">
+                            <i class="bi bi-check-circle"></i> Testar Conexão
+                        </button>
+                        <button type="button" class="btn btn-info" id="loadTablesBtn">
+                            <i class="bi bi-list-ul"></i> Listar Tabelas
+                        </button>
+                        <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#tunnelModal">
+                            <i class="bi bi-arrow-left-right"></i> Criar Túnel SSM
+                        </button>
+                        <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#saveTunnelModal">
+                            <i class="bi bi-bookmark-plus"></i> Salvar Túnel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Card de Query com Abas -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-code-square"></i> Editor SQL</h5>
+                <button type="button" class="btn btn-sm btn-light" id="newTabBtn">
+                    <i class="bi bi-plus-circle"></i> Nova Aba
+                </button>
+            </div>
+            <div class="card-body p-0">
+                <!-- Abas -->
+                <ul class="nav nav-tabs px-3 pt-2" id="sqlTabs" role="tablist">
+                    <!-- Abas serão inseridas aqui via JavaScript -->
+                </ul>
+                
+                <!-- Conteúdo das Abas -->
+                <div class="tab-content p-3" id="sqlTabsContent">
+                    <!-- Conteúdo será inserido via JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para criar túnel SSM -->
+<div class="modal fade" id="tunnelModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title"><i class="bi bi-arrow-left-right"></i> Criar Túnel SSM</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i> 
+                    <strong>Pré-requisito:</strong> Você precisa ter o <strong>AWS CLI</strong> e o 
+                    <strong>Session Manager Plugin</strong> instalados localmente.
+                    <br>
+                    <small>
+                        <a href="https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html" target="_blank">
+                            Instalar Session Manager Plugin
+                        </a>
+                    </small>
+                </div>
+                
+                <p class="text-muted">Configure o túnel SSM para conectar ao RDS através do Bastion</p>
+                
+                <div class="mb-3">
+                    <label for="bastionInstanceId" class="form-label">
+                        Bastion Host *
+                        <button type="button" class="btn btn-sm btn-outline-secondary ms-2" id="refreshBastionsBtn">
+                            <i class="bi bi-arrow-clockwise"></i> Atualizar
+                        </button>
+                    </label>
+                    <select class="form-select" id="bastionInstanceId" required>
+                        <option value="">Carregando...</option>
+                    </select>
+                    <small class="text-muted">Apenas Bastions em execução</small>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="rdsEndpoint" class="form-label">
+                        Instância RDS *
+                        <button type="button" class="btn btn-sm btn-outline-secondary ms-2" id="refreshRdsBtn">
+                            <i class="bi bi-arrow-clockwise"></i> Atualizar
+                        </button>
+                    </label>
+                    <select class="form-select" id="rdsEndpoint" required>
+                        <option value="">Carregando...</option>
+                    </select>
+                    <small class="text-muted">Apenas instâncias disponíveis</small>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="rdsPort" class="form-label">Porta do RDS *</label>
+                        <input type="number" class="form-control" id="rdsPort" value="3306" required readonly>
+                        <small class="text-muted">Preenchido automaticamente</small>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label for="localPort" class="form-label">Porta Local</label>
+                        <input type="number" class="form-control" id="localPort" 
+                               placeholder="Mesma do RDS">
+                        <small class="text-muted">Opcional</small>
+                    </div>
+                </div>
+                
+                <div class="alert alert-info">
+                    <strong>Como funciona:</strong>
+                    <ol class="mb-0 mt-2">
+                        <li>Selecione um Bastion Host em execução</li>
+                        <li>Selecione a instância RDS de destino</li>
+                        <li>O túnel será criado via AWS CLI localmente</li>
+                        <li>Após criar, use <code>localhost</code> como host na conexão</li>
+                    </ol>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-warning" id="createTunnelBtn">
+                    <i class="bi bi-arrow-left-right"></i> Criar Túnel
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para listar tabelas -->
+<div class="modal fade" id="tablesModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="bi bi-list-ul"></i> Tabelas do Banco</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="tablesModalBody">
+                <!-- Conteúdo será inserido via JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para salvar túnel -->
+<div class="modal fade" id="saveTunnelModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-secondary text-white">
+                <h5 class="modal-title"><i class="bi bi-bookmark-plus"></i> Salvar Túnel</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> 
+                    Salve a configuração atual do túnel para reutilizar depois.
+                </div>
+                
+                <div class="mb-3">
+                    <label for="tunnelName" class="form-label">Nome do Túnel *</label>
+                    <input type="text" class="form-control" id="tunnelName" required 
+                           placeholder="Ex: Produção MySQL">
+                </div>
+                
+                <div class="mb-3">
+                    <label for="tunnelDescription" class="form-label">Descrição</label>
+                    <textarea class="form-control" id="tunnelDescription" rows="2" 
+                              placeholder="Descrição opcional"></textarea>
+                </div>
+                
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="savePasswordCheck">
+                    <label class="form-check-label" for="savePasswordCheck">
+                        Salvar senha do banco (armazenada localmente)
+                    </label>
+                </div>
+                
+                <div class="alert alert-warning">
+                    <small>
+                        <strong>Será salvo:</strong><br>
+                        • Bastion ID: <span id="previewBastionId">-</span><br>
+                        • DB Host: <span id="previewDbHost">-</span><br>
+                        • DB Port: <span id="previewDbPort">-</span><br>
+                        • DB Name: <span id="previewDbName">-</span><br>
+                        • DB User: <span id="previewDbUser">-</span><br>
+                        • DB Type: <span id="previewDbType">-</span><br>
+                        • Senha: <span id="previewPassword">Não será salva</span>
+                    </small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="confirmSaveTunnelBtn">
+                    <i class="bi btn-bookmark-plus"></i> Salvar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/db_query.js') }}"></script>
+<script src="{{ url_for('static', filename='js/db_query_tabs.js') }}"></script>
+{% endblock %}

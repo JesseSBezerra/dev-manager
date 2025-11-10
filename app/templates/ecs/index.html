@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}Gerenciar ECS - Clusters e Serviços{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1 class="mb-4">
+            <i class="bi bi-hdd-stack"></i> Gerenciamento de ECS (Elastic Container Service)
+        </h1>
+    </div>
+</div>
+
+<!-- Alertas -->
+<div id="alertContainer"></div>
+
+<!-- Card de Clusters -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-server"></i> Clusters ECS</h5>
+                <button class="btn btn-light btn-sm" id="refreshClustersBtn">
+                    <i class="bi bi-arrow-clockwise"></i> Atualizar
+                </button>
+            </div>
+            <div class="card-body">
+                <!-- Filtros -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-control" id="filterClusterName" placeholder="Filtrar por nome do cluster...">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="showOnlyFavorites">
+                            <label class="form-check-label" for="showOnlyFavorites">
+                                <i class="bi bi-star-fill text-warning"></i> Mostrar apenas favoritos
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="clustersContainer">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Carregando...</span>
+                        </div>
+                        <p class="mt-2">Carregando clusters...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Card de Serviços (aparece quando um cluster é selecionado) -->
+<div class="row mb-4" id="servicesSection" style="display: none;">
+    <div class="col-md-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-box"></i> Serviços do Cluster: <span id="selectedClusterName"></span>
+                </h5>
+                <div>
+                    <button class="btn btn-light btn-sm me-2" id="viewTasksBtn">
+                        <i class="bi bi-list-task"></i> Ver Tasks
+                    </button>
+                    <button class="btn btn-light btn-sm" id="refreshServicesBtn">
+                        <i class="bi bi-arrow-clockwise"></i> Atualizar
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="servicesContainer">
+                    <div class="text-center">
+                        <div class="spinner-border text-success" role="status">
+                            <span class="visually-hidden">Carregando...</span>
+                        </div>
+                        <p class="mt-2">Carregando serviços...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Card de Tasks (aparece quando solicitado) -->
+<div class="row mb-4" id="tasksSection" style="display: none;">
+    <div class="col-md-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-list-task"></i> Tasks em Execução
+                </h5>
+                <button class="btn btn-light btn-sm" id="closeTasksBtn">
+                    <i class="bi bi-x-lg"></i> Fechar
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="tasksContainer">
+                    <div class="text-center">
+                        <div class="spinner-border text-info" role="status">
+                            <span class="visually-hidden">Carregando...</span>
+                        </div>
+                        <p class="mt-2">Carregando tasks...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para detalhes -->
+<div class="modal fade" id="detailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detailsModalTitle">Detalhes</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detailsModalBody">
+                <!-- Conteúdo será inserido via JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/ecs.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,353 @@
+{% extends "base.html" %}
+
+{% block title %}Kafka - DEV Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1 class="mb-4">
+            <i class="bi bi-diagram-3"></i> Kafka Catalog
+        </h1>
+        <p class="text-muted">Gerencie clusters, tópicos e publique mensagens Kafka</p>
+    </div>
+</div>
+
+<div id="alertContainer"></div>
+
+<ul class="nav nav-tabs mb-4" id="mainTabs">
+    <li class="nav-item">
+        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#clusters-panel">
+            <i class="bi bi-server"></i> Clusters
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#schemas-panel">
+            <i class="bi bi-file-code"></i> Schemas
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#owners-panel">
+            <i class="bi bi-people"></i> Donos
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#auth-panel">
+            <i class="bi bi-shield-lock"></i> Autenticações
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content">
+    <!-- Clusters -->
+    <div class="tab-pane fade show active" id="clusters-panel">
+        <div class="row mb-3">
+            <div class="col-md-8">
+                <select class="form-select" id="filterOwner">
+                    <option value="">Todos os donos</option>
+                </select>
+            </div>
+            <div class="col-md-4 text-end">
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createClusterModal">
+                    <i class="bi bi-plus-circle"></i> Novo Cluster
+                </button>
+                <button class="btn btn-secondary" id="refreshClustersBtn">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+            </div>
+        </div>
+        <div id="clustersContainer">
+            <div class="text-center"><div class="spinner-border"></div></div>
+        </div>
+    </div>
+
+    <!-- Schemas -->
+    <div class="tab-pane fade" id="schemas-panel">
+        <div class="row mb-3">
+            <div class="col-md-8"></div>
+            <div class="col-md-4 text-end">
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createSchemaModal">
+                    <i class="bi bi-plus-circle"></i> Novo Schema
+                </button>
+                <button class="btn btn-secondary" id="refreshSchemasBtn">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+            </div>
+        </div>
+        <div id="schemasContainer">
+            <div class="text-center"><div class="spinner-border"></div></div>
+        </div>
+    </div>
+
+    <!-- Donos -->
+    <div class="tab-pane fade" id="owners-panel">
+        <div class="row mb-3">
+            <div class="col-md-8"></div>
+            <div class="col-md-4 text-end">
+                <button class="btn btn-info" data-bs-toggle="modal" data-bs-target="#createOwnerModal">
+                    <i class="bi bi-plus-circle"></i> Novo Dono
+                </button>
+                <button class="btn btn-secondary" id="refreshOwnersBtn">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+            </div>
+        </div>
+        <div id="ownersContainer">
+            <div class="text-center"><div class="spinner-border"></div></div>
+        </div>
+    </div>
+
+    <!-- Autenticações -->
+    <div class="tab-pane fade" id="auth-panel">
+        <div class="row mb-3">
+            <div class="col-md-8"></div>
+            <div class="col-md-4 text-end">
+                <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#createAuthModal">
+                    <i class="bi bi-plus-circle"></i> Nova Autenticação
+                </button>
+                <button class="btn btn-secondary" id="refreshAuthBtn">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+            </div>
+        </div>
+        <div id="authContainer">
+            <div class="text-center"><div class="spinner-border"></div></div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Criar Dono -->
+<div class="modal fade" id="createOwnerModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">Novo Dono</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Nome *</label>
+                    <input type="text" class="form-control" id="ownerName" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Descrição</label>
+                    <textarea class="form-control" id="ownerDescription" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-info" id="createOwnerBtn">Criar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Criar Autenticação -->
+<div class="modal fade" id="createAuthModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title">Nova Autenticação</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Nome *</label>
+                    <input type="text" class="form-control" id="authName" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Dono *</label>
+                    <select class="form-select" id="authOwner" required></select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Tipo *</label>
+                    <select class="form-select" id="authType" required>
+                        <option value="NONE">Nenhuma</option>
+                        <option value="SASL_SSL">SASL/SSL</option>
+                        <option value="SSL">SSL</option>
+                    </select>
+                </div>
+                <div class="mb-3" id="saslFields" style="display:none;">
+                    <label class="form-label">SASL Mechanism</label>
+                    <select class="form-select" id="saslMechanism">
+                        <option value="PLAIN">PLAIN</option>
+                        <option value="SCRAM-SHA-256">SCRAM-SHA-256</option>
+                        <option value="SCRAM-SHA-512">SCRAM-SHA-512</option>
+                    </select>
+                </div>
+                <div class="mb-3" id="credentialsFields" style="display:none;">
+                    <label class="form-label">Username</label>
+                    <input type="text" class="form-control" id="authUsername">
+                    <label class="form-label mt-2">Password</label>
+                    <input type="password" class="form-control" id="authPassword">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-warning" id="createAuthBtn">Criar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Criar Schema -->
+<div class="modal fade" id="createSchemaModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Novo Schema</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Nome *</label>
+                            <input type="text" class="form-control" id="schemaName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Dono *</label>
+                            <select class="form-select" id="schemaOwner" required></select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Tipo *</label>
+                            <select class="form-select" id="schemaType" required>
+                                <option value="json">JSON</option>
+                                <option value="avro">Avro</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Descrição</label>
+                            <textarea class="form-control" id="schemaDescription" rows="2"></textarea>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Schema Content (JSON) *</label>
+                            <textarea class="form-control font-monospace" id="schemaContent" rows="15" required></textarea>
+                            <small class="text-muted">Para Avro, use formato Avro Schema JSON</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="createSchemaBtn">Criar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Criar Cluster -->
+<div class="modal fade" id="createClusterModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Novo Cluster</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Nome *</label>
+                    <input type="text" class="form-control" id="clusterName" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Dono *</label>
+                    <select class="form-select" id="clusterOwner" required></select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Bootstrap Servers *</label>
+                    <input type="text" class="form-control" id="clusterBootstrap" placeholder="localhost:9092,localhost:9093" required>
+                    <small class="text-muted">Separar múltiplos servidores por vírgula</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Autenticação</label>
+                    <select class="form-select" id="clusterAuth">
+                        <option value="">Nenhuma</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Descrição</label>
+                    <textarea class="form-control" id="clusterDescription" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="createClusterBtn">Criar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Tópicos do Cluster -->
+<div class="modal fade" id="topicsModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><span id="topicsModalTitle"></span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-12 text-end">
+                        <button class="btn btn-primary btn-sm" id="createTopicBtn">
+                            <i class="bi bi-plus-circle"></i> Novo Tópico
+                        </button>
+                    </div>
+                </div>
+                <div id="topicsContainer">
+                    <div class="text-center"><div class="spinner-border"></div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Publicar Mensagem -->
+<div class="modal fade" id="publishModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title"><i class="bi bi-send"></i> Publicar Mensagem</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Key (opcional)</label>
+                            <input type="text" class="form-control" id="messageKey">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Payload (JSON) *</label>
+                            <textarea class="form-control font-monospace" id="messagePayload" rows="15" required></textarea>
+                            <small class="text-muted">Últimos parâmetros salvos automaticamente</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Headers (JSON)</label>
+                            <textarea class="form-control font-monospace" id="messageHeaders" rows="3"></textarea>
+                            <small class="text-muted">Exemplo: {"header1": "value1"}</small>
+                        </div>
+                        <button class="btn btn-success" id="publishBtn">
+                            <i class="bi bi-send"></i> Publicar
+                        </button>
+                        <button class="btn btn-secondary" id="clearPublishBtn">
+                            <i class="bi bi-x-circle"></i> Limpar
+                        </button>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Resultado</h6>
+                        <div id="publishResult">
+                            <p class="text-muted">Publique uma mensagem para ver o resultado</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/kafka.js') }}"></script>
+{% endblock %}

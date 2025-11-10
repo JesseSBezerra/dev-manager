@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block title %}Gerenciar EC2 - Instâncias e Bastion{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1 class="mb-4">
+            <i class="bi bi-server"></i> Gerenciamento de EC2 (Elastic Compute Cloud)
+        </h1>
+    </div>
+</div>
+
+<!-- Alertas -->
+<div id="alertContainer"></div>
+
+<!-- Botões de ação -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createBastionModal">
+            <i class="bi bi-shield-check"></i> Criar Bastion Host (SSM)
+        </button>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createInstanceModal">
+            <i class="bi bi-plus-circle"></i> Criar Instância EC2
+        </button>
+        <button class="btn btn-secondary" id="refreshInstancesBtn">
+            <i class="bi bi-arrow-clockwise"></i> Atualizar Lista
+        </button>
+    </div>
+</div>
+
+<!-- Card de Instâncias -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-server"></i> Instâncias EC2</h5>
+            </div>
+            <div class="card-body">
+                <div id="instancesContainer">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Carregando...</span>
+                        </div>
+                        <p class="mt-2">Carregando instâncias...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para criar Bastion Host -->
+<div class="modal fade" id="createBastionModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-shield-check"></i> Criar Bastion Host com SSM</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> 
+                    <strong>Bastion Host:</strong> Instância EC2 configurada para acesso seguro via SSM Session Manager.
+                    Ideal para conectar com RDS sem expor portas publicamente.
+                </div>
+                
+                <form id="createBastionForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="bastionName" class="form-label">Nome do Bastion *</label>
+                            <input type="text" class="form-control" id="bastionName" required
+                                   placeholder="bastion-prod">
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="bastionInstanceType" class="form-label">Tipo da Instância *</label>
+                            <select class="form-select" id="bastionInstanceType" required>
+                                <option value="t3.micro" selected>t3.micro (1 vCPU, 1 GB) - Free Tier</option>
+                                <option value="t3.small">t3.small (2 vCPU, 2 GB)</option>
+                                <option value="t3.medium">t3.medium (2 vCPU, 4 GB)</option>
+                                <option value="t4g.micro">t4g.micro (2 vCPU, 1 GB) - Graviton</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="bastionKeyName" class="form-label">Key Pair (Opcional)</label>
+                            <input type="text" class="form-control" id="bastionKeyName"
+                                   placeholder="my-key-pair">
+                            <small class="text-muted">Deixe vazio se usar apenas SSM</small>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="bastionSubnetId" class="form-label">Subnet ID (Opcional)</label>
+                            <input type="text" class="form-control" id="bastionSubnetId"
+                                   placeholder="subnet-xxxxx">
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-warning">
+                        <strong>Recursos incluídos:</strong>
+                        <ul class="mb-0">
+                            <li>Amazon Linux 2 com SSM Agent pré-instalado</li>
+                            <li>IAM Role para SSM automaticamente configurada</li>
+                            <li>Ferramentas: mysql, postgresql, telnet, nc</li>
+                            <li>Conexão via SSM Session Manager (sem SSH público)</li>
+                        </ul>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="createBastionBtn">
+                    <i class="bi bi-shield-check"></i> Criar Bastion Host
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para criar instância genérica -->
+<div class="modal fade" id="createInstanceModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-plus-circle"></i> Criar Instância EC2</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createInstanceForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="instanceName" class="form-label">Nome da Instância *</label>
+                            <input type="text" class="form-control" id="instanceName" required
+                                   placeholder="my-instance">
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="instanceAmiId" class="form-label">AMI ID *</label>
+                            <input type="text" class="form-control" id="instanceAmiId" required
+                                   placeholder="ami-xxxxx">
+                            <small class="text-muted">
+                                <a href="#" id="viewAmisLink">Ver AMIs disponíveis</a>
+                            </small>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="instanceType" class="form-label">Tipo da Instância *</label>
+                            <select class="form-select" id="instanceType" required>
+                                <option value="t3.micro">t3.micro (1 vCPU, 1 GB)</option>
+                                <option value="t3.small">t3.small (2 vCPU, 2 GB)</option>
+                                <option value="t3.medium">t3.medium (2 vCPU, 4 GB)</option>
+                                <option value="t3.large">t3.large (2 vCPU, 8 GB)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="instanceKeyName" class="form-label">Key Pair (Opcional)</label>
+                            <input type="text" class="form-control" id="instanceKeyName"
+                                   placeholder="my-key-pair">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="createInstanceBtn">
+                    <i class="bi bi-plus-circle"></i> Criar Instância
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para conexão SSM -->
+<div class="modal fade" id="ssmConnectionModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-terminal"></i> Conexão SSM Session Manager</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="ssmConnectionBody">
+                <!-- Conteúdo será inserido via JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para detalhes da instância -->
+<div class="modal fade" id="instanceDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-info-circle"></i> Detalhes da Instância</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="instanceDetailsBody">
+                <!-- Conteúdo será inserido via JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/ec2.js') }}"></script>
+{% endblock %}

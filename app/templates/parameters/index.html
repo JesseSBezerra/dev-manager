@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+
+{% block title %}Parameter Store - AWS{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1 class="mb-4">
+            <i class="bi bi-sliders"></i> AWS Systems Manager Parameter Store
+        </h1>
+        <p class="text-muted">Gerencie parâmetros de configuração de forma centralizada e segura</p>
+    </div>
+</div>
+
+<!-- Alertas -->
+<div id="alertContainer"></div>
+
+<!-- Tabs -->
+<ul class="nav nav-tabs mb-4" id="parametersTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="all-parameters-tab" data-bs-toggle="tab" data-bs-target="#all-parameters" type="button">
+            <i class="bi bi-sliders"></i> Todos os Parâmetros
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="favorites-tab" data-bs-toggle="tab" data-bs-target="#favorites" type="button">
+            <i class="bi bi-star-fill text-warning"></i> Favoritos
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content" id="parametersTabContent">
+    <!-- Tab Todos os Parâmetros -->
+    <div class="tab-pane fade show active" id="all-parameters" role="tabpanel">
+        <div class="row mb-3">
+            <div class="col-md-8">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control" id="parametersFilter" placeholder="Filtrar parâmetros por nome...">
+                    <button class="btn btn-outline-secondary" id="clearFilterBtn" title="Limpar filtro">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+                <small class="text-muted">Digite para filtrar em tempo real</small>
+            </div>
+            <div class="col-md-4 text-end">
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createParameterModal">
+                    <i class="bi bi-plus-circle"></i> Criar
+                </button>
+                <button class="btn btn-secondary" id="refreshParametersBtn">
+                    <i class="bi bi-arrow-clockwise"></i> Atualizar
+                </button>
+            </div>
+        </div>
+        
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-list-ul"></i> Parâmetros</h5>
+            </div>
+            <div class="card-body">
+                <div id="parametersContainer">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-2">Carregando parâmetros...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tab Favoritos -->
+    <div class="tab-pane fade" id="favorites" role="tabpanel">
+        <div class="row mb-3">
+            <div class="col-md-8">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control" id="favoritesFilter" placeholder="Filtrar favoritos...">
+                    <button class="btn btn-outline-secondary" id="clearFavoritesFilterBtn" title="Limpar filtro">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+                <small class="text-muted">Digite para filtrar seus parâmetros favoritos</small>
+            </div>
+            <div class="col-md-4 text-end">
+                <button class="btn btn-warning" id="refreshFavoritesBtn">
+                    <i class="bi bi-arrow-clockwise"></i> Atualizar
+                </button>
+            </div>
+        </div>
+        
+        <div class="card shadow-sm">
+            <div class="card-header bg-warning">
+                <h5 class="mb-0"><i class="bi bi-star-fill"></i> Parâmetros Favoritos</h5>
+            </div>
+            <div class="card-body">
+                <div id="favoritesContainer">
+                    <div class="text-center">
+                        <div class="spinner-border text-warning" role="status"></div>
+                        <p class="mt-2">Carregando favoritos...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para criar parâmetro -->
+<div class="modal fade" id="createParameterModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-plus-circle"></i> Criar Novo Parâmetro</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="parameterName" class="form-label">Nome do Parâmetro *</label>
+                    <input type="text" class="form-control" id="parameterName" placeholder="/app/prod/database/host" required>
+                    <small class="text-muted">Deve começar com / e usar apenas: a-z A-Z 0-9 / _ . -</small>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="parameterType" class="form-label">Tipo *</label>
+                    <select class="form-select" id="parameterType">
+                        <option value="String">String - Texto simples</option>
+                        <option value="StringList">StringList - Lista separada por vírgulas</option>
+                        <option value="SecureString">SecureString - Criptografado (KMS)</option>
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="parameterValue" class="form-label">Valor *</label>
+                    <textarea class="form-control font-monospace" id="parameterValue" rows="4" required></textarea>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="parameterDescription" class="form-label">Descrição</label>
+                    <input type="text" class="form-control" id="parameterDescription" placeholder="Descrição opcional">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="createParameterBtn">
+                    <i class="bi bi-plus-circle"></i> Criar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para visualizar valor -->
+<div class="modal fade" id="viewValueModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-eye"></i> Valor do Parâmetro</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Nome:</label>
+                    <p id="viewParamName" class="font-monospace"></p>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Valor:</label>
+                    <pre id="viewParamValue" class="bg-light p-3 rounded"></pre>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Tipo:</label>
+                    <p id="viewParamType"></p>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Versão:</label>
+                    <p id="viewParamVersion"></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="copyValueBtn">
+                    <i class="bi bi-clipboard"></i> Copiar Valor
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para atualizar parâmetro -->
+<div class="modal fade" id="updateParameterModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title"><i class="bi bi-pencil"></i> Atualizar Parâmetro</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Nome:</label>
+                    <p id="updateParamName" class="font-monospace fw-bold"></p>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="updateParameterValue" class="form-label">Novo Valor *</label>
+                    <textarea class="form-control font-monospace" id="updateParameterValue" rows="4" required></textarea>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="updateParameterDescription" class="form-label">Nova Descrição</label>
+                    <input type="text" class="form-control" id="updateParameterDescription">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-warning" id="updateParameterBtn">
+                    <i class="bi bi-pencil"></i> Atualizar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para histórico -->
+<div class="modal fade" id="historyModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="bi bi-clock-history"></i> Histórico do Parâmetro</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="historyBody">
+                <!-- Conteúdo será inserido via JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/parameters.js') }}"></script>
+{% endblock %}

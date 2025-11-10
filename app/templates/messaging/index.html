@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+
+{% block title %}SQS & SNS - DEV Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1 class="mb-4">
+            <i class="bi bi-envelope"></i> Mensageria AWS (SQS & SNS)
+        </h1>
+        <p class="text-muted">Gerencie filas SQS e tópicos SNS</p>
+    </div>
+</div>
+
+<!-- Alertas -->
+<div id="alertContainer"></div>
+
+<!-- Tabs principais -->
+<ul class="nav nav-tabs mb-4" id="mainTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="sqs-tab" data-bs-toggle="tab" data-bs-target="#sqs-panel" type="button">
+            <i class="bi bi-inbox"></i> SQS (Filas)
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="sns-tab" data-bs-toggle="tab" data-bs-target="#sns-panel" type="button">
+            <i class="bi bi-megaphone"></i> SNS (Tópicos)
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content" id="mainTabContent">
+    <!-- Tab SQS -->
+    <div class="tab-pane fade show active" id="sqs-panel" role="tabpanel">
+        <div class="row mb-3">
+            <div class="col-md-8">
+                <input type="text" class="form-control" id="sqsFilter" placeholder="Filtrar por nome...">
+            </div>
+            <div class="col-md-4 text-end">
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createQueueModal">
+                    <i class="bi bi-plus-circle"></i> Nova Fila
+                </button>
+                <button class="btn btn-secondary" id="refreshQueuesBtn">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-inbox"></i> Filas SQS</h5>
+            </div>
+            <div class="card-body">
+                <div id="queuesContainer">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-2">Carregando filas...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tab SNS -->
+    <div class="tab-pane fade" id="sns-panel" role="tabpanel">
+        <div class="row mb-3">
+            <div class="col-md-8">
+                <input type="text" class="form-control" id="snsFilter" placeholder="Filtrar por nome...">
+            </div>
+            <div class="col-md-4 text-end">
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createTopicModal">
+                    <i class="bi bi-plus-circle"></i> Novo Tópico
+                </button>
+                <button class="btn btn-secondary" id="refreshTopicsBtn">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div class="card shadow-sm">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="bi bi-megaphone"></i> Tópicos SNS</h5>
+            </div>
+            <div class="card-body">
+                <div id="topicsContainer">
+                    <div class="text-center">
+                        <div class="spinner-border text-success" role="status"></div>
+                        <p class="mt-2">Carregando tópicos...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Criar Fila -->
+<div class="modal fade" id="createQueueModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-plus-circle"></i> Nova Fila SQS</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="queueName" class="form-label">Nome da Fila *</label>
+                    <input type="text" class="form-control" id="queueName" required>
+                </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="queueFifo">
+                    <label class="form-check-label" for="queueFifo">
+                        Fila FIFO (First-In-First-Out)
+                    </label>
+                </div>
+                <div class="mb-3">
+                    <label for="queueDelay" class="form-label">Delay (segundos)</label>
+                    <input type="number" class="form-control" id="queueDelay" value="0" min="0" max="900">
+                </div>
+                <div class="mb-3">
+                    <label for="queueRetention" class="form-label">Retenção (segundos)</label>
+                    <input type="number" class="form-control" id="queueRetention" value="345600" min="60" max="1209600">
+                    <small class="text-muted">Padrão: 4 dias (345600s)</small>
+                </div>
+                <div class="mb-3">
+                    <label for="queueVisibility" class="form-label">Visibility Timeout (segundos)</label>
+                    <input type="number" class="form-control" id="queueVisibility" value="30" min="0" max="43200">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="createQueueBtn">
+                    <i class="bi bi-plus-circle"></i> Criar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Criar Tópico -->
+<div class="modal fade" id="createTopicModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-plus-circle"></i> Novo Tópico SNS</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="topicName" class="form-label">Nome do Tópico *</label>
+                    <input type="text" class="form-control" id="topicName" required>
+                </div>
+                <div class="mb-3">
+                    <label for="topicDisplayName" class="form-label">Nome de Exibição</label>
+                    <input type="text" class="form-control" id="topicDisplayName">
+                </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="topicFifo">
+                    <label class="form-check-label" for="topicFifo">
+                        Tópico FIFO (First-In-First-Out)
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="createTopicBtn">
+                    <i class="bi bi-plus-circle"></i> Criar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Mensagens da Fila -->
+<div class="modal fade" id="queueMessagesModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="bi bi-envelope"></i> <span id="queueMessagesTitle"></span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <button class="btn btn-primary" id="receiveMessagesBtn">
+                            <i class="bi bi-download"></i> Receber Mensagens
+                        </button>
+                        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#sendMessageModal">
+                            <i class="bi bi-send"></i> Enviar Mensagem
+                        </button>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <button class="btn btn-warning" id="purgeQueueBtn">
+                            <i class="bi bi-trash"></i> Limpar Fila
+                        </button>
+                    </div>
+                </div>
+                <div id="messagesContent">
+                    <p class="text-muted">Clique em "Receber Mensagens" para visualizar</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Enviar Mensagem -->
+<div class="modal fade" id="sendMessageModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-send"></i> Enviar Mensagem</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="messageBody" class="form-label">Mensagem *</label>
+                    <textarea class="form-control font-monospace" id="messageBody" rows="6" required></textarea>
+                </div>
+                <div class="mb-3">
+                    <label for="messageDelay" class="form-label">Delay (segundos)</label>
+                    <input type="number" class="form-control" id="messageDelay" value="0" min="0" max="900">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="sendMessageBtn">
+                    <i class="bi bi-send"></i> Enviar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Publicar em Tópico -->
+<div class="modal fade" id="publishMessageModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-megaphone"></i> Publicar Mensagem</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="publishSubject" class="form-label">Assunto</label>
+                    <input type="text" class="form-control" id="publishSubject">
+                </div>
+                <div class="mb-3">
+                    <label for="publishMessage" class="form-label">Mensagem *</label>
+                    <textarea class="form-control font-monospace" id="publishMessage" rows="6" required></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="publishMessageBtn">
+                    <i class="bi bi-megaphone"></i> Publicar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/messaging.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}DEV Manager{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+        
+        /* Top navbar */
+        .top-navbar {
+            background-color: #212529;
+            height: 60px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1030;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .top-navbar .brand {
+            color: white;
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .top-navbar .brand:hover {
+            color: #0d6efd;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            top: 60px;
+            left: 0;
+            bottom: 0;
+            width: 250px;
+            background-color: #f8f9fa;
+            border-right: 1px solid #dee2e6;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+            z-index: 1020;
+        }
+        
+        .sidebar.collapsed {
+            transform: translateX(-250px);
+        }
+        
+        .sidebar-toggle {
+            position: fixed;
+            top: 70px;
+            left: 10px;
+            z-index: 1040;
+            background-color: #0d6efd;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: left 0.3s ease;
+        }
+        
+        .sidebar-toggle:hover {
+            background-color: #0b5ed7;
+        }
+        
+        .sidebar.collapsed + .sidebar-toggle {
+            left: 10px;
+        }
+        
+        .sidebar:not(.collapsed) + .sidebar-toggle {
+            left: 260px;
+        }
+        
+        /* Main content */
+        .main-content {
+            margin-top: 60px;
+            margin-left: 250px;
+            padding: 20px;
+            transition: margin-left 0.3s ease;
+        }
+        
+        .sidebar.collapsed ~ .main-content {
+            margin-left: 0;
+        }
+        
+        /* Sidebar menu */
+        .sidebar-menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .sidebar-menu .menu-section {
+            margin-bottom: 10px;
+        }
+        
+        .sidebar-menu .section-title {
+            padding: 15px 20px 10px;
+            font-weight: bold;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            color: #6c757d;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            user-select: none;
+        }
+        
+        .sidebar-menu .section-title:hover {
+            background-color: #e9ecef;
+        }
+        
+        .sidebar-menu .section-items {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-height: 500px;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        
+        .sidebar-menu .section-items.collapsed {
+            max-height: 0;
+        }
+        
+        .sidebar-menu .menu-item {
+            padding: 0;
+        }
+        
+        .sidebar-menu .menu-item a {
+            display: block;
+            padding: 12px 20px 12px 35px;
+            color: #495057;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        
+        .sidebar-menu .menu-item a:hover {
+            background-color: #e9ecef;
+            color: #0d6efd;
+            padding-left: 40px;
+        }
+        
+        .sidebar-menu .menu-item a.active {
+            background-color: #0d6efd;
+            color: white;
+        }
+        
+        .sidebar-menu .menu-item i {
+            margin-right: 10px;
+            width: 20px;
+            text-align: center;
+        }
+        
+        /* Mobile responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-250px);
+            }
+            
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .sidebar-toggle {
+                left: 10px !important;
+            }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Top Navbar -->
+    <div class="top-navbar">
+        <a href="/" class="brand">
+            <i class="bi bi-cloud"></i>
+            DEV Manager
+        </a>
+    </div>
+    
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <ul class="sidebar-menu">
+            <!-- AWS Section -->
+            <li class="menu-section">
+                <div class="section-title" onclick="toggleSection('aws-section')">
+                    <span><i class="bi bi-cloud"></i> AWS Services</span>
+                    <i class="bi bi-chevron-down" id="aws-section-icon"></i>
+                </div>
+                <ul class="section-items" id="aws-section">
+                    <li class="menu-item">
+                        <a href="{{ url_for('dynamodb.index') }}">
+                            <i class="bi bi-table"></i> DynamoDB
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{{ url_for('ecs.index') }}">
+                            <i class="bi bi-hdd-stack"></i> ECS
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{{ url_for('rds.index') }}">
+                            <i class="bi bi-database"></i> RDS
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{{ url_for('ec2.index') }}">
+                            <i class="bi bi-server"></i> EC2
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{{ url_for('secrets.index') }}">
+                            <i class="bi bi-key"></i> Secrets Manager
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{{ url_for('cloudwatch.index') }}">
+                            <i class="bi bi-file-text"></i> CloudWatch Logs
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{{ url_for('parameters.index') }}">
+                            <i class="bi bi-sliders"></i> Parameter Store
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{{ url_for('messaging.index') }}">
+                            <i class="bi bi-envelope"></i> SQS & SNS
+                        </a>
+                    </li>
+                </ul>
+            </li>
+            
+            <!-- APIs Section -->
+            <li class="menu-section">
+                <div class="section-title" onclick="toggleSection('apis-section')">
+                    <span><i class="bi bi-code-slash"></i> APIs</span>
+                    <i class="bi bi-chevron-down" id="apis-section-icon"></i>
+                </div>
+                <ul class="section-items" id="apis-section">
+                    <li class="menu-item">
+                        <a href="{{ url_for('api_catalog.index') }}">
+                            <i class="bi bi-book"></i> Catálogo
+                        </a>
+                    </li>
+                </ul>
+            </li>
+            
+            <!-- Kafka Section -->
+            <li class="menu-section">
+                <div class="section-title" onclick="toggleSection('kafka-section')">
+                    <span><i class="bi bi-diagram-3"></i> Kafka</span>
+                    <i class="bi bi-chevron-down" id="kafka-section-icon"></i>
+                </div>
+                <ul class="section-items" id="kafka-section">
+                    <li class="menu-item">
+                        <a href="{{ url_for('kafka.index') }}">
+                            <i class="bi bi-book"></i> Catálogo
+                        </a>
+                    </li>
+                </ul>
+            </li>
+            
+            <!-- Dev Utils Section -->
+            <li class="menu-section">
+                <div class="section-title" onclick="toggleSection('dev-section')">
+                    <span><i class="bi bi-tools"></i> Dev Utils</span>
+                    <i class="bi bi-chevron-down" id="dev-section-icon"></i>
+                </div>
+                <ul class="section-items" id="dev-section">
+                    <li class="menu-item">
+                        <a href="{{ url_for('db_query.index') }}">
+                            <i class="bi bi-terminal"></i> SQL Query Tool
+                        </a>
+                    </li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+    
+    <!-- Sidebar Toggle Button -->
+    <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()">
+        <i class="bi bi-list"></i>
+    </button>
+    
+    <!-- Main Content -->
+    <div class="main-content">
+        {% block content %}{% endblock %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Toggle sidebar
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('collapsed');
+            
+            // Save state
+            localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+        }
+        
+        // Toggle section
+        function toggleSection(sectionId) {
+            const section = document.getElementById(sectionId);
+            const icon = document.getElementById(sectionId + '-icon');
+            
+            section.classList.toggle('collapsed');
+            
+            if (section.classList.contains('collapsed')) {
+                icon.classList.remove('bi-chevron-down');
+                icon.classList.add('bi-chevron-right');
+            } else {
+                icon.classList.remove('bi-chevron-right');
+                icon.classList.add('bi-chevron-down');
+            }
+            
+            // Save state
+            localStorage.setItem(sectionId + 'Collapsed', section.classList.contains('collapsed'));
+        }
+        
+        // Restore sidebar state
+        document.addEventListener('DOMContentLoaded', function() {
+            // Restore sidebar collapsed state
+            const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+            if (sidebarCollapsed) {
+                document.getElementById('sidebar').classList.add('collapsed');
+            }
+            
+            // Restore sections state
+            ['aws-section', 'apis-section', 'dev-section'].forEach(sectionId => {
+                const collapsed = localStorage.getItem(sectionId + 'Collapsed') === 'true';
+                if (collapsed) {
+                    document.getElementById(sectionId).classList.add('collapsed');
+                    const icon = document.getElementById(sectionId + '-icon');
+                    icon.classList.remove('bi-chevron-down');
+                    icon.classList.add('bi-chevron-right');
+                }
+            });
+            
+            // Highlight active menu item
+            const currentPath = window.location.pathname;
+            document.querySelectorAll('.sidebar-menu a').forEach(link => {
+                if (link.getAttribute('href') === currentPath) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

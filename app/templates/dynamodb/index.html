@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}Gerenciar Tabelas DynamoDB{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1 class="mb-4">
+            <i class="bi bi-database-add"></i> Gerenciamento de Tabelas DynamoDB
+        </h1>
+    </div>
+</div>
+
+<!-- Alertas -->
+<div id="alertContainer"></div>
+
+<!-- Card para criar nova tabela -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-plus-circle"></i> Criar Nova Tabela</h5>
+            </div>
+            <div class="card-body">
+                <form id="createTableForm">
+                    <div class="mb-3">
+                        <label for="tableName" class="form-label">Nome da Tabela *</label>
+                        <input type="text" class="form-control" id="tableName" name="table_name" 
+                               placeholder="Ex: usuarios, produtos, pedidos" required>
+                        <div class="form-text">Entre 3 e 255 caracteres (letras, números, _, -, .)</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="primaryKey" class="form-label">Chave Primária *</label>
+                        <input type="text" class="form-control" id="primaryKey" name="primary_key" 
+                               placeholder="Ex: id, userId, productId" required>
+                        <div class="form-text">Nome do atributo que será a chave primária</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="keyType" class="form-label">Tipo da Chave *</label>
+                        <select class="form-select" id="keyType" name="primary_key_type" required>
+                            <option value="S" selected>String (S)</option>
+                            <option value="N">Number (N)</option>
+                            <option value="B">Binary (B)</option>
+                        </select>
+                        <div class="form-text">Tipo de dado da chave primária</div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary w-100" id="createBtn">
+                        <i class="bi bi-plus-lg"></i> Criar Tabela
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Card com informações -->
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="bi bi-info-circle"></i> Informações</h5>
+            </div>
+            <div class="card-body">
+                <h6><strong>Sobre as Tabelas DynamoDB:</strong></h6>
+                <ul class="list-unstyled">
+                    <li><i class="bi bi-check-circle text-success"></i> Banco NoSQL totalmente gerenciado</li>
+                    <li><i class="bi bi-check-circle text-success"></i> Escalabilidade automática</li>
+                    <li><i class="bi bi-check-circle text-success"></i> Baixa latência</li>
+                    <li><i class="bi bi-check-circle text-success"></i> Modelo de cobrança pay-per-request</li>
+                </ul>
+                
+                <hr>
+                
+                <h6><strong>Tipos de Chave:</strong></h6>
+                <ul class="list-unstyled">
+                    <li><strong>S (String):</strong> Texto</li>
+                    <li><strong>N (Number):</strong> Números</li>
+                    <li><strong>B (Binary):</strong> Dados binários</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lista de tabelas existentes -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-list-ul"></i> Tabelas Existentes</h5>
+                <button class="btn btn-light btn-sm" id="refreshBtn">
+                    <i class="bi bi-arrow-clockwise"></i> Atualizar
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="tablesContainer">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Carregando...</span>
+                        </div>
+                        <p class="mt-2">Carregando tabelas...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/dynamodb.js') }}"></script>
+{% endblock %}

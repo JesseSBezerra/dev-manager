@@ -1,0 +1,325 @@
+{% extends "base.html" %}
+
+{% block title %}API Catalog - DEV Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1 class="mb-4">
+            <i class="bi bi-book"></i> Catálogo de APIs
+        </h1>
+        <p class="text-muted">Gerencie e teste suas APIs de forma centralizada</p>
+    </div>
+</div>
+
+<!-- Alertas -->
+<div id="alertContainer"></div>
+
+<!-- Tabs principais -->
+<ul class="nav nav-tabs mb-4" id="mainTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="apis-tab" data-bs-toggle="tab" data-bs-target="#apis-panel" type="button">
+            <i class="bi bi-list-ul"></i> APIs
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="owners-tab" data-bs-toggle="tab" data-bs-target="#owners-panel" type="button">
+            <i class="bi bi-people"></i> Donos
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="auth-tab" data-bs-toggle="tab" data-bs-target="#auth-panel" type="button">
+            <i class="bi bi-shield-lock"></i> Autenticações
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content" id="mainTabContent">
+    <!-- Tab APIs -->
+    <div class="tab-pane fade show active" id="apis-panel" role="tabpanel">
+        <div class="row mb-3">
+            <div class="col-md-8">
+                <select class="form-select" id="filterOwner">
+                    <option value="">Todos os donos</option>
+                </select>
+            </div>
+            <div class="col-md-4 text-end">
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createApiModal">
+                    <i class="bi bi-plus-circle"></i> Nova API
+                </button>
+                <button class="btn btn-secondary" id="refreshApisBtn">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-list-ul"></i> APIs Cadastradas</h5>
+            </div>
+            <div class="card-body">
+                <div id="apisContainer">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-2">Carregando APIs...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tab Donos -->
+    <div class="tab-pane fade" id="owners-panel" role="tabpanel">
+        <div class="row mb-3">
+            <div class="col-md-12 text-end">
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createOwnerModal">
+                    <i class="bi bi-plus-circle"></i> Novo Dono
+                </button>
+                <button class="btn btn-secondary" id="refreshOwnersBtn">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div class="card shadow-sm">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="bi bi-people"></i> Donos Cadastrados</h5>
+            </div>
+            <div class="card-body">
+                <div id="ownersContainer">
+                    <div class="text-center">
+                        <div class="spinner-border text-info" role="status"></div>
+                        <p class="mt-2">Carregando donos...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tab Autenticações -->
+    <div class="tab-pane fade" id="auth-panel" role="tabpanel">
+        <div class="row mb-3">
+            <div class="col-md-8">
+                <select class="form-select" id="filterAuthOwner">
+                    <option value="">Todos os donos</option>
+                </select>
+            </div>
+            <div class="col-md-4 text-end">
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createAuthModal">
+                    <i class="bi bi-plus-circle"></i> Nova Autenticação
+                </button>
+                <button class="btn btn-secondary" id="refreshAuthBtn">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div class="card shadow-sm">
+            <div class="card-header bg-warning">
+                <h5 class="mb-0"><i class="bi bi-shield-lock"></i> Autenticações Cadastradas</h5>
+            </div>
+            <div class="card-body">
+                <div id="authContainer">
+                    <div class="text-center">
+                        <div class="spinner-border text-warning" role="status"></div>
+                        <p class="mt-2">Carregando autenticações...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Criar Dono -->
+<div class="modal fade" id="createOwnerModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="bi bi-plus-circle"></i> Novo Dono</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="ownerName" class="form-label">Nome *</label>
+                    <input type="text" class="form-control" id="ownerName" required>
+                </div>
+                <div class="mb-3">
+                    <label for="ownerDescription" class="form-label">Descrição</label>
+                    <textarea class="form-control" id="ownerDescription" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-info" id="createOwnerBtn">
+                    <i class="bi bi-plus-circle"></i> Criar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Criar API -->
+<div class="modal fade" id="createApiModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-plus-circle"></i> Nova API</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="apiName" class="form-label">Nome *</label>
+                    <input type="text" class="form-control" id="apiName" required>
+                </div>
+                <div class="mb-3">
+                    <label for="apiOwner" class="form-label">Dono *</label>
+                    <div class="input-group">
+                        <select class="form-select" id="apiOwner" required>
+                            <option value="">Selecione...</option>
+                        </select>
+                        <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#createOwnerModal">
+                            <i class="bi bi-plus"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="apiBaseUrl" class="form-label">Base URL</label>
+                    <input type="text" class="form-control" id="apiBaseUrl" placeholder="https://api.example.com">
+                </div>
+                <div class="mb-3">
+                    <label for="apiDescription" class="form-label">Descrição</label>
+                    <textarea class="form-control" id="apiDescription" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="createApiBtn">
+                    <i class="bi bi-plus-circle"></i> Criar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Criar Autenticação -->
+<div class="modal fade" id="createAuthModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title"><i class="bi bi-plus-circle"></i> Nova Autenticação</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="authName" class="form-label">Nome *</label>
+                    <input type="text" class="form-control" id="authName" required>
+                </div>
+                <div class="mb-3">
+                    <label for="authOwner" class="form-label">Dono *</label>
+                    <select class="form-select" id="authOwner" required>
+                        <option value="">Selecione...</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="authType" class="form-label">Tipo *</label>
+                    <select class="form-select" id="authType" required>
+                        <option value="bearer">Bearer Token</option>
+                        <option value="basic">Basic Auth</option>
+                        <option value="apikey">API Key</option>
+                        <option value="oauth2">OAuth 2.0</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="authToken" class="form-label">Token/Chave</label>
+                    <input type="text" class="form-control font-monospace" id="authToken">
+                </div>
+                <div class="mb-3">
+                    <label for="authTokenField" class="form-label">Campo do Token na Resposta</label>
+                    <input type="text" class="form-control" id="authTokenField" placeholder="Ex: access_token">
+                    <small class="text-muted">Campo JSON que contém o token na resposta de autenticação</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-warning" id="createAuthBtn">
+                    <i class="bi bi-plus-circle"></i> Criar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Detalhes da API -->
+<div class="modal fade" id="apiDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-info-circle"></i> <span id="apiDetailsTitle"></span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="apiDetailsContent">
+                    <!-- Conteúdo será inserido via JavaScript -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Testar Request -->
+<div class="modal fade" id="testRequestModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title"><i class="bi bi-play-circle"></i> Testar Request</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Request</h6>
+                        <div class="mb-3">
+                            <label class="form-label">Body (JSON)</label>
+                            <textarea class="form-control font-monospace" id="testRequestBody" rows="8"></textarea>
+                            <small class="text-muted">Parâmetros salvos automaticamente ao executar</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Query Params (JSON)</label>
+                            <textarea class="form-control font-monospace" id="testRequestQuery" rows="3"></textarea>
+                            <small class="text-muted">Exemplo: {"page": 1, "limit": 10}</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Headers Customizados (JSON)</label>
+                            <textarea class="form-control font-monospace" id="testRequestHeaders" rows="3"></textarea>
+                            <small class="text-muted">Exemplo: {"X-Custom-Header": "value"}</small>
+                        </div>
+                        <button class="btn btn-success" id="executeTestBtn">
+                            <i class="bi bi-play-circle"></i> Executar
+                        </button>
+                        <button class="btn btn-secondary" id="clearTestBtn">
+                            <i class="bi bi-x-circle"></i> Limpar
+                        </button>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Response</h6>
+                        <div id="testResponseContainer">
+                            <p class="text-muted">Execute a request para ver a resposta</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/api_catalog.js') }}"></script>
+{% endblock %}

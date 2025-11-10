@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+
+{% block title %}CloudWatch Logs - AWS{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1 class="mb-4">
+            <i class="bi bi-file-text"></i> CloudWatch Logs
+        </h1>
+        <p class="text-muted">Visualize logs e execute queries com CloudWatch Logs Insights</p>
+    </div>
+</div>
+
+<!-- Alertas -->
+<div id="alertContainer"></div>
+
+<!-- Tabs -->
+<ul class="nav nav-tabs mb-4" id="logsTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="log-groups-tab" data-bs-toggle="tab" data-bs-target="#log-groups" type="button">
+            <i class="bi bi-folder"></i> Todos os Log Groups
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="favorites-tab" data-bs-toggle="tab" data-bs-target="#favorites" type="button">
+            <i class="bi bi-star-fill text-warning"></i> Favoritos
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="insights-tab" data-bs-toggle="tab" data-bs-target="#insights" type="button">
+            <i class="bi bi-search"></i> Logs Insights
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content" id="logsTabContent">
+    <!-- Tab Log Groups -->
+    <div class="tab-pane fade show active" id="log-groups" role="tabpanel">
+        <div class="row mb-3">
+            <div class="col-md-10">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control" id="logGroupFilter" placeholder="Filtrar log groups por nome...">
+                    <button class="btn btn-outline-secondary" id="clearFilterBtn" title="Limpar filtro">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+                <small class="text-muted">Digite para filtrar em tempo real</small>
+            </div>
+            <div class="col-md-2 text-end">
+                <button class="btn btn-primary" id="refreshLogGroupsBtn">
+                    <i class="bi bi-arrow-clockwise"></i> Atualizar
+                </button>
+            </div>
+        </div>
+        
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-list-ul"></i> Log Groups</h5>
+            </div>
+            <div class="card-body">
+                <div id="logGroupsContainer">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-2">Carregando log groups...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tab Favoritos -->
+    <div class="tab-pane fade" id="favorites" role="tabpanel">
+        <div class="row mb-3">
+            <div class="col-md-10">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control" id="favoritesFilter" placeholder="Filtrar favoritos...">
+                    <button class="btn btn-outline-secondary" id="clearFavoritesFilterBtn" title="Limpar filtro">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+                <small class="text-muted">Digite para filtrar seus log groups favoritos</small>
+            </div>
+            <div class="col-md-2 text-end">
+                <button class="btn btn-warning" id="refreshFavoritesBtn">
+                    <i class="bi bi-arrow-clockwise"></i> Atualizar
+                </button>
+            </div>
+        </div>
+        
+        <div class="card shadow-sm">
+            <div class="card-header bg-warning">
+                <h5 class="mb-0"><i class="bi bi-star-fill"></i> Log Groups Favoritos</h5>
+            </div>
+            <div class="card-body">
+                <div id="favoritesContainer">
+                    <div class="text-center">
+                        <div class="spinner-border text-warning" role="status"></div>
+                        <p class="mt-2">Carregando favoritos...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tab Logs Insights -->
+    <div class="tab-pane fade" id="insights" role="tabpanel">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="bi bi-code-square"></i> Query Editor</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="insightsLogGroups" class="form-label">Log Groups *</label>
+                    <select class="form-select" id="insightsLogGroups" multiple size="5">
+                        <option value="">Carregando...</option>
+                    </select>
+                    <small class="text-muted">Selecione um ou mais log groups (Ctrl+Click)</small>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="savedQueriesSelect" class="form-label">
+                        Queries Salvas
+                        <button type="button" class="btn btn-sm btn-outline-primary ms-2" id="refreshSavedQueriesBtn">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                    </label>
+                    <select class="form-select" id="savedQueriesSelect">
+                        <option value="">Selecione uma query salva...</option>
+                    </select>
+                    <small class="text-muted">Carregue uma query salva anteriormente</small>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="insightsQuery" class="form-label">
+                        Query (CloudWatch Insights Syntax)
+                        <button type="button" class="btn btn-sm btn-outline-success ms-2" data-bs-toggle="modal" data-bs-target="#saveQueryModal">
+                            <i class="bi bi-save"></i> Salvar Query
+                        </button>
+                    </label>
+                    <textarea class="form-control font-monospace" id="insightsQuery" rows="6">fields @timestamp, @message
+| filter @message like /ERROR/
+| sort @timestamp desc
+| limit 100</textarea>
+                    <small class="text-muted">
+                        <a href="https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/CWL_QuerySyntax.html" target="_blank">
+                            Documentação da Sintaxe
+                        </a>
+                    </small>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="insightsHours" class="form-label">Período</label>
+                        <select class="form-select" id="insightsHours">
+                            <option value="1">Última 1 hora</option>
+                            <option value="3">Últimas 3 horas</option>
+                            <option value="6">Últimas 6 horas</option>
+                            <option value="12">Últimas 12 horas</option>
+                            <option value="24" selected>Últimas 24 horas</option>
+                            <option value="72">Últimos 3 dias</option>
+                            <option value="168">Última semana</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="insightsLimit" class="form-label">Limite de Resultados</label>
+                        <select class="form-select" id="insightsLimit">
+                            <option value="100">100</option>
+                            <option value="500">500</option>
+                            <option value="1000" selected>1000</option>
+                            <option value="5000">5000</option>
+                            <option value="10000">10000</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="d-flex gap-2 flex-wrap">
+                    <button class="btn btn-success" id="executeQueryBtn">
+                        <i class="bi bi-play-fill"></i> Executar Query
+                    </button>
+                    <button class="btn btn-secondary" id="clearQueryBtn">
+                        <i class="bi bi-x-circle"></i> Limpar
+                    </button>
+                    
+                    <div class="ms-auto">
+                        <small class="text-muted me-2">Templates:</small>
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-outline-danger btn-sm" onclick="insertQueryTemplate('errors')" title="Buscar erros">
+                                <i class="bi bi-exclamation-triangle"></i> Erros
+                            </button>
+                            <button type="button" class="btn btn-outline-info btn-sm" onclick="insertQueryTemplate('stats')" title="Estatísticas por tempo">
+                                <i class="bi bi-graph-up"></i> Stats
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="insertQueryTemplate('filter')" title="Filtro customizado">
+                                <i class="bi bi-funnel"></i> Filtro
+                            </button>
+                            <button type="button" class="btn btn-outline-warning btn-sm" onclick="insertQueryTemplate('slow')" title="Requisições lentas">
+                                <i class="bi bi-clock-history"></i> Lentas
+                            </button>
+                            <button type="button" class="btn btn-outline-success btn-sm" onclick="insertQueryTemplate('count')" title="Contar por campo">
+                                <i class="bi bi-bar-chart"></i> Count
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card shadow-sm">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0"><i class="bi bi-table"></i> Resultados</h5>
+            </div>
+            <div class="card-body">
+                <div id="queryResultsContainer">
+                    <div class="text-center text-muted">
+                        <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+                        <p class="mt-2">Execute uma query para ver os resultados aqui</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para visualizar log stream -->
+<div class="modal fade" id="logStreamModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="bi bi-file-text"></i> Log Stream</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <strong>Log Group:</strong> <span id="modalLogGroupName" class="font-monospace"></span>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="streamSelect" class="form-label">Selecione um Stream:</label>
+                    <select class="form-select" id="streamSelect">
+                        <option value="">Carregando...</option>
+                    </select>
+                </div>
+                
+                <div id="logEventsContainer">
+                    <div class="text-center text-muted">
+                        <p>Selecione um stream para ver os eventos</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para detalhes do log group -->
+<div class="modal fade" id="logGroupDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-info-circle"></i> Detalhes do Log Group</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="logGroupDetailsBody">
+                <!-- Conteúdo será inserido via JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para salvar query -->
+<div class="modal fade" id="saveQueryModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-save"></i> Salvar Query</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="queryName" class="form-label">Nome da Query *</label>
+                    <input type="text" class="form-control" id="queryName" placeholder="Ex: Buscar Erros" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="queryDescription" class="form-label">Descrição</label>
+                    <textarea class="form-control" id="queryDescription" rows="2" placeholder="Descrição opcional"></textarea>
+                </div>
+                
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> A query será salva para o(s) log group(s) selecionado(s)
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="saveQueryBtn">
+                    <i class="bi bi-save"></i> Salvar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/cloudwatch.js') }}"></script>
+{% endblock %}

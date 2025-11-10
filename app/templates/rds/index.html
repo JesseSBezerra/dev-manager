@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block title %}Gerenciar RDS - Bancos de Dados{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1 class="mb-4">
+            <i class="bi bi-database"></i> Gerenciamento de RDS (Relational Database Service)
+        </h1>
+    </div>
+</div>
+
+<!-- Alertas -->
+<div id="alertContainer"></div>
+
+<!-- Botão para criar nova instância -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createInstanceModal">
+            <i class="bi bi-plus-circle"></i> Criar Nova Instância RDS
+        </button>
+        <button class="btn btn-secondary" id="refreshInstancesBtn">
+            <i class="bi bi-arrow-clockwise"></i> Atualizar Lista
+        </button>
+    </div>
+</div>
+
+<!-- Card de Instâncias -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-server"></i> Instâncias RDS</h5>
+            </div>
+            <div class="card-body">
+                <div id="instancesContainer">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Carregando...</span>
+                        </div>
+                        <p class="mt-2">Carregando instâncias...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para criar instância -->
+<div class="modal fade" id="createInstanceModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-plus-circle"></i> Criar Nova Instância RDS</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createInstanceForm">
+                    <div class="row">
+                        <!-- Identificador -->
+                        <div class="col-md-6 mb-3">
+                            <label for="dbInstanceIdentifier" class="form-label">Identificador da Instância *</label>
+                            <input type="text" class="form-control" id="dbInstanceIdentifier" required
+                                   placeholder="my-database-instance" pattern="[a-z][a-z0-9-]*">
+                            <small class="form-text text-muted">Apenas letras minúsculas, números e hífens</small>
+                        </div>
+                        
+                        <!-- Engine -->
+                        <div class="col-md-6 mb-3">
+                            <label for="engine" class="form-label">Engine do Banco *</label>
+                            <select class="form-select" id="engine" required>
+                                <option value="">Selecione...</option>
+                                <option value="mysql">MySQL</option>
+                                <option value="postgres">PostgreSQL</option>
+                                <option value="mariadb">MariaDB</option>
+                                <option value="oracle-se2">Oracle SE2</option>
+                                <option value="sqlserver-ex">SQL Server Express</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Classe da Instância -->
+                        <div class="col-md-6 mb-3">
+                            <label for="dbInstanceClass" class="form-label">Classe da Instância *</label>
+                            <select class="form-select" id="dbInstanceClass" required>
+                                <option value="">Selecione...</option>
+                                <optgroup label="T3 - Uso Geral (Burstable)">
+                                    <option value="db.t3.micro">db.t3.micro (1 vCPU, 1 GB RAM)</option>
+                                    <option value="db.t3.small">db.t3.small (2 vCPU, 2 GB RAM)</option>
+                                    <option value="db.t3.medium">db.t3.medium (2 vCPU, 4 GB RAM)</option>
+                                    <option value="db.t3.large">db.t3.large (2 vCPU, 8 GB RAM)</option>
+                                </optgroup>
+                                <optgroup label="T4g - Graviton (Burstable)">
+                                    <option value="db.t4g.micro">db.t4g.micro (2 vCPU, 1 GB RAM)</option>
+                                    <option value="db.t4g.small">db.t4g.small (2 vCPU, 2 GB RAM)</option>
+                                    <option value="db.t4g.medium">db.t4g.medium (2 vCPU, 4 GB RAM)</option>
+                                </optgroup>
+                                <optgroup label="M5 - Uso Geral">
+                                    <option value="db.m5.large">db.m5.large (2 vCPU, 8 GB RAM)</option>
+                                    <option value="db.m5.xlarge">db.m5.xlarge (4 vCPU, 16 GB RAM)</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                        
+                        <!-- Storage -->
+                        <div class="col-md-6 mb-3">
+                            <label for="allocatedStorage" class="form-label">Armazenamento (GB) *</label>
+                            <input type="number" class="form-control" id="allocatedStorage" 
+                                   value="20" min="20" max="65536" required>
+                            <small class="form-text text-muted">Mínimo: 20 GB</small>
+                        </div>
+                        
+                        <!-- Master Username -->
+                        <div class="col-md-6 mb-3">
+                            <label for="masterUsername" class="form-label">Usuário Master *</label>
+                            <input type="text" class="form-control" id="masterUsername" required
+                                   placeholder="admin" maxlength="16">
+                            <small class="form-text text-muted">1-16 caracteres</small>
+                        </div>
+                        
+                        <!-- Master Password -->
+                        <div class="col-md-6 mb-3">
+                            <label for="masterPassword" class="form-label">Senha Master *</label>
+                            <input type="password" class="form-control" id="masterPassword" required
+                                   minlength="8" maxlength="41">
+                            <small class="form-text text-muted">8-41 caracteres</small>
+                        </div>
+                        
+                        <!-- Nome do Banco -->
+                        <div class="col-md-6 mb-3">
+                            <label for="dbName" class="form-label">Nome do Banco Inicial</label>
+                            <input type="text" class="form-control" id="dbName" 
+                                   placeholder="mydatabase" maxlength="64">
+                            <small class="form-text text-muted">Opcional</small>
+                        </div>
+                        
+                        <!-- Opções -->
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Opções</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="publiclyAccessible">
+                                <label class="form-check-label" for="publiclyAccessible">
+                                    Acesso Público
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="multiAZ">
+                                <label class="form-check-label" for="multiAZ">
+                                    Multi-AZ (Alta Disponibilidade)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> 
+                        <strong>Atenção:</strong> A criação de uma instância RDS pode levar de 5 a 15 minutos.
+                        A instância será criada com criptografia habilitada e backup automático de 7 dias.
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="createInstanceBtn">
+                    <i class="bi bi-plus-circle"></i> Criar Instância
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para detalhes da instância -->
+<div class="modal fade" id="instanceDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-info-circle"></i> Detalhes da Instância</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="instanceDetailsBody">
+                <!-- Conteúdo será inserido via JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/rds.js') }}"></script>
+{% endblock %}
