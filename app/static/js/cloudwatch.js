@@ -764,11 +764,14 @@ async function loadSavedQueriesForLogGroup() {
     const logGroupName = selectedGroups[0];
     
     try {
+        // Encode cada parte do path separadamente
         const encodedLogGroup = logGroupName.split('/').map(part => encodeURIComponent(part)).join('/');
         const response = await fetch(`/cloudwatch/saved-queries/log-group/${encodedLogGroup}`);
         const result = await response.json();
         
-        if (result.success && result.queries.length > 0) {
+        console.log('Queries carregadas:', result); // Debug
+        
+        if (result.success && result.queries && result.queries.length > 0) {
             result.queries.forEach(query => {
                 const option = document.createElement('option');
                 option.value = query.id;
@@ -776,11 +779,13 @@ async function loadSavedQueriesForLogGroup() {
                 option.dataset.queryString = query.query_string;
                 savedQueriesSelect.appendChild(option);
             });
+            showAlert(`${result.queries.length} query(ies) carregada(s)`, 'success');
         } else {
             savedQueriesSelect.innerHTML = '<option value="">Nenhuma query salva para este log group</option>';
         }
     } catch (error) {
         console.error('Erro ao carregar queries:', error);
+        showAlert(`Erro ao carregar queries: ${error.message}`, 'danger');
     }
 }
 

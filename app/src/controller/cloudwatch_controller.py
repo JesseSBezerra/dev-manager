@@ -233,8 +233,14 @@ def get_queries_by_log_group(log_group_name):
         log_group_name: Nome do log group
     """
     try:
+        # Adiciona a barra inicial se não tiver
         log_group_name = unquote(log_group_name)
+        if not log_group_name.startswith('/'):
+            log_group_name = '/' + log_group_name
+            
+        print(f"[DEBUG] Buscando queries para log group: '{log_group_name}'")
         result = db_manager.get_queries_by_log_group(log_group_name)
+        print(f"[DEBUG] Resultado: {result}")
         
         if result['success']:
             return jsonify(result), 200
@@ -242,6 +248,7 @@ def get_queries_by_log_group(log_group_name):
             return jsonify(result), 400
             
     except Exception as e:
+        print(f"[ERROR] Erro ao listar queries: {str(e)}")
         return jsonify({
             'success': False,
             'message': f'Erro ao listar queries: {str(e)}'
@@ -262,6 +269,8 @@ def save_query():
     try:
         data = request.get_json()
         
+        print(f"[DEBUG] Salvando query: name='{data.get('name')}', log_group='{data.get('log_group_name')}'")
+        
         result = db_manager.save_query(
             name=data.get('name'),
             log_group_name=data.get('log_group_name'),
@@ -269,12 +278,15 @@ def save_query():
             description=data.get('description')
         )
         
+        print(f"[DEBUG] Resultado do save: {result}")
+        
         if result['success']:
             return jsonify(result), 201
         else:
             return jsonify(result), 400
             
     except Exception as e:
+        print(f"[ERROR] Erro ao salvar query: {str(e)}")
         return jsonify({
             'success': False,
             'message': f'Erro ao salvar query: {str(e)}'
