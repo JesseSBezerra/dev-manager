@@ -15,9 +15,12 @@ const clearFavoritesFilterBtn = document.getElementById('clearFavoritesFilterBtn
 const savedQueriesSelect = document.getElementById('savedQueriesSelect');
 const refreshSavedQueriesBtn = document.getElementById('refreshSavedQueriesBtn');
 const saveQueryBtn = document.getElementById('saveQueryBtn');
+const filterInsightsLogGroups = document.getElementById('filterInsightsLogGroups');
+const clearInsightsFilterBtn = document.getElementById('clearInsightsFilterBtn');
 
 let allLogGroups = [];
 let allFavorites = [];
+let allInsightsLogGroups = [];
 let currentLogGroupName = null;
 
 // Event Listeners
@@ -38,6 +41,11 @@ clearFavoritesFilterBtn.addEventListener('click', () => {
 savedQueriesSelect.addEventListener('change', loadSavedQuery);
 refreshSavedQueriesBtn.addEventListener('click', loadSavedQueriesForLogGroup);
 saveQueryBtn.addEventListener('click', saveCurrentQuery);
+filterInsightsLogGroups.addEventListener('input', filterInsightsLogGroupsList);
+clearInsightsFilterBtn.addEventListener('click', () => {
+    filterInsightsLogGroups.value = '';
+    filterInsightsLogGroupsList();
+});
 
 // Carregar ao iniciar
 document.addEventListener('DOMContentLoaded', () => {
@@ -384,19 +392,51 @@ async function loadLogGroupsForInsights() {
         const result = await response.json();
         
         if (result.success) {
-            select.innerHTML = '';
-            result.log_groups.forEach(group => {
-                const option = document.createElement('option');
-                option.value = group.name;
-                option.textContent = group.name;
-                select.appendChild(option);
-            });
+            allInsightsLogGroups = result.log_groups;
+            displayInsightsLogGroups(allInsightsLogGroups);
         } else {
             select.innerHTML = '<option value="">Erro ao carregar</option>';
         }
     } catch (error) {
         select.innerHTML = '<option value="">Erro ao carregar</option>';
     }
+}
+
+/**
+ * Exibe log groups no select do Insights
+ */
+function displayInsightsLogGroups(logGroups) {
+    const select = document.getElementById('insightsLogGroups');
+    select.innerHTML = '';
+    
+    logGroups.forEach(group => {
+        const option = document.createElement('option');
+        option.value = group.name;
+        option.textContent = group.name;
+        select.appendChild(option);
+    });
+    
+    if (logGroups.length === 0) {
+        select.innerHTML = '<option value="">Nenhum log group encontrado</option>';
+    }
+}
+
+/**
+ * Filtra log groups do Insights
+ */
+function filterInsightsLogGroupsList() {
+    const filterText = filterInsightsLogGroups.value.toLowerCase();
+    
+    if (!filterText) {
+        displayInsightsLogGroups(allInsightsLogGroups);
+        return;
+    }
+    
+    const filtered = allInsightsLogGroups.filter(group => 
+        group.name.toLowerCase().includes(filterText)
+    );
+    
+    displayInsightsLogGroups(filtered);
 }
 
 /**

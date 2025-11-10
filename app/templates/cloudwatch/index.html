@@ -114,6 +114,13 @@
             <div class="card-body">
                 <div class="mb-3">
                     <label for="insightsLogGroups" class="form-label">Log Groups *</label>
+                    <div class="input-group mb-2">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" id="filterInsightsLogGroups" placeholder="Filtrar log groups...">
+                        <button class="btn btn-outline-secondary" type="button" id="clearInsightsFilterBtn">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
                     <select class="form-select" id="insightsLogGroups" multiple size="5">
                         <option value="">Carregando...</option>
                     </select>
