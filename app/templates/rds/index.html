@@ -34,6 +34,24 @@
                 <h5 class="mb-0"><i class="bi bi-server"></i> Instâncias RDS</h5>
             </div>
             <div class="card-body">
+                <!-- Filtros -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-control" id="filterInstanceName" placeholder="Filtrar por nome da instância...">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="showOnlyFavorites">
+                            <label class="form-check-label" for="showOnlyFavorites">
+                                <i class="bi bi-star-fill text-warning"></i> Mostrar apenas favoritos
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
                 <div id="instancesContainer">
                     <div class="text-center">
                         <div class="spinner-border text-primary" role="status">

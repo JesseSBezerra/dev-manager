@@ -179,3 +179,70 @@ def start_instance(db_instance_identifier):
             'success': False,
             'message': f'Erro ao iniciar instância: {str(e)}'
         }), 500
+
+
+# ==================== FAVORITOS ====================
+
+@rds_bp.route('/favorites', methods=['GET'])
+def get_favorites():
+    """
+    Obtém lista de instâncias favoritas
+    """
+    try:
+        result = db.get_favorite_rds_instances()
+        return jsonify(result), 200 if result['success'] else 400
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Erro: {str(e)}'
+        }), 500
+
+
+@rds_bp.route('/favorites/<instance_identifier>', methods=['POST'])
+def add_favorite(instance_identifier):
+    """
+    Adiciona instância aos favoritos
+    """
+    try:
+        data = request.get_json() or {}
+        alias = data.get('alias')
+        result = db.add_favorite_rds_instance(instance_identifier, alias)
+        return jsonify(result), 200 if result['success'] else 400
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Erro: {str(e)}'
+        }), 500
+
+
+@rds_bp.route('/favorites/<instance_identifier>', methods=['DELETE'])
+def remove_favorite(instance_identifier):
+    """
+    Remove instância dos favoritos
+    """
+    try:
+        result = db.remove_favorite_rds_instance(instance_identifier)
+        return jsonify(result), 200 if result['success'] else 400
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Erro: {str(e)}'
+        }), 500
+
+
+@rds_bp.route('/favorites/<instance_identifier>/check', methods=['GET'])
+def check_favorite(instance_identifier):
+    """
+    Verifica se instância está nos favoritos
+    """
+    try:
+        is_favorite = db.is_favorite_rds_instance(instance_identifier)
+        return jsonify({
+            'success': True,
+            'is_favorite': is_favorite
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Erro: {str(e)}'
+        }), 500

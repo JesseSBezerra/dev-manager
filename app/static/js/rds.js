@@ -6,6 +6,10 @@ const alertContainer = document.getElementById('alertContainer');
 const createInstanceBtn = document.getElementById('createInstanceBtn');
 const refreshInstancesBtn = document.getElementById('refreshInstancesBtn');
 
+// Variáveis globais
+let allInstances = [];
+let favoriteInstances = [];
+
 // Event Listeners
 document.addEventListener('DOMContentLoaded', () => {
     loadInstances();
@@ -17,6 +21,14 @@ refreshInstancesBtn.addEventListener('click', () => {
 
 createInstanceBtn.addEventListener('click', () => {
     createInstance();
+});
+
+document.getElementById('filterInstanceName').addEventListener('input', () => {
+    filterInstances();
+});
+
+document.getElementById('showOnlyFavorites').addEventListener('change', () => {
+    filterInstances();
 });
 
 /**
@@ -57,11 +69,22 @@ async function loadInstances() {
     `;
     
     try {
+        // Carrega instâncias
         const response = await fetch('/rds/instances');
         const result = await response.json();
         
         if (result.success) {
-            displayInstances(result.instances);
+            allInstances = result.instances;
+            
+            // Carrega favoritos
+            const favResponse = await fetch('/rds/favorites');
+            const favResult = await favResponse.json();
+            
+            if (favResult.success) {
+                favoriteInstances = favResult.favorites.map(f => f.instance_identifier);
+            }
+            
+            filterInstances();
         } else {
             instancesContainer.innerHTML = `
                 <div class="alert alert-warning">
@@ -77,6 +100,32 @@ async function loadInstances() {
             </div>
         `;
     }
+}
+
+/**
+ * Filtra instâncias por nome e favoritos
+ */
+function filterInstances() {
+    const searchTerm = document.getElementById('filterInstanceName').value.toLowerCase();
+    const showOnlyFavorites = document.getElementById('showOnlyFavorites').checked;
+    
+    let filtered = allInstances;
+    
+    // Filtro por nome
+    if (searchTerm) {
+        filtered = filtered.filter(instance => 
+            instance.db_instance_identifier.toLowerCase().includes(searchTerm)
+        );
+    }
+    
+    // Filtro por favoritos
+    if (showOnlyFavorites) {
+        filtered = filtered.filter(instance => 
+            favoriteInstances.includes(instance.db_instance_identifier)
+        );
+    }
+    
+    displayInstances(filtered);
 }
 
 /**
@@ -115,10 +164,17 @@ function displayInstances(instances) {
         const statusColor = getStatusColor(instance.status);
         const isAvailable = instance.status === 'available';
         const isStopped = instance.status === 'stopped';
+        const isFavorite = favoriteInstances.includes(instance.db_instance_identifier);
+        const starIcon = isFavorite ? 'bi-star-fill text-warning' : 'bi-star';
         
         html += `
             <tr>
-                <td><strong>${instance.identifier}</strong></td>
+                <td>
+                    <strong>${instance.identifier}</strong>
+                    <button class="btn btn-sm btn-link p-0 ms-2" onclick="toggleFavorite('${instance.db_instance_identifier}')" title="${isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}">
+                        <i class="bi ${starIcon}"></i>
+                    </button>
+                </td>
                 <td><span class="badge bg-${statusColor}">${instance.status}</span></td>
                 <td>
                     <i class="bi bi-database"></i> ${instance.engine}
@@ -461,4 +517,51 @@ function copyToClipboard(text) {
     }).catch(err => {
         showAlert('Erro ao copiar: ' + err, 'danger');
     });
+}
+
+/**
+ * Adiciona ou remove instância dos favoritos
+ */
+async function toggleFavorite(instanceIdentifier) {
+    const isFavorite = favoriteInstances.includes(instanceIdentifier);
+    
+    try {
+        if (isFavorite) {
+            // Remove dos favoritos
+            const response = await fetch(`/rds/favorites/${encodeURIComponent(instanceIdentifier)}`, {
+                method: 'DELETE'
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                favoriteInstances = favoriteInstances.filter(name => name !== instanceIdentifier);
+                showAlert(`Instância "${instanceIdentifier}" removida dos favoritos`, 'success');
+                filterInstances();
+            } else {
+                showAlert(result.message, 'danger');
+            }
+        } else {
+            // Adiciona aos favoritos
+            const response = await fetch(`/rds/favorites/${encodeURIComponent(instanceIdentifier)}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({})
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                favoriteInstances.push(instanceIdentifier);
+                showAlert(`Instância "${instanceIdentifier}" adicionada aos favoritos`, 'success');
+                filterInstances();
+            } else {
+                showAlert(result.message, 'danger');
+            }
+        }
+    } catch (error) {
+        showAlert(`Erro ao atualizar favorito: ${error.message}`, 'danger');
+    }
 }

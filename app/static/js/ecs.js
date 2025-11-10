@@ -156,7 +156,7 @@ function displayClusters(clusters) {
         return;
     }
     
-    let html = '<div class="row">';
+    let html = '';
     
     clusters.forEach(cluster => {
         const statusColor = cluster.status === 'ACTIVE' ? 'success' : 'warning';
@@ -164,43 +164,41 @@ function displayClusters(clusters) {
         const starIcon = isFavorite ? 'bi-star-fill text-warning' : 'bi-star';
         
         html += `
-            <div class="col-md-6 mb-3">
-                <div class="card h-100 cluster-card" onclick="selectCluster('${cluster.name}')">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-start mb-3">
-                            <div>
-                                <h5 class="card-title mb-1">
+            <div class="card cluster-card mb-3" onclick="selectCluster('${cluster.name}')">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <div class="me-3">
+                                <h5 class="mb-0">
                                     <i class="bi bi-server"></i> ${cluster.name}
                                 </h5>
-                                <span class="badge bg-${statusColor}">${cluster.status}</span>
+                                <span class="badge bg-${statusColor} mt-1">${cluster.status}</span>
                             </div>
-                            <div>
-                                <button class="btn btn-sm btn-outline-warning me-1" onclick="event.stopPropagation(); toggleFavorite('${cluster.name}')" title="${isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}">
-                                    <i class="bi ${starIcon}"></i>
-                                </button>
-                                <button class="btn btn-sm btn-outline-info" onclick="event.stopPropagation(); viewClusterDetails('${cluster.name}')">
-                                    <i class="bi bi-info-circle"></i>
-                            </button>
                         </div>
                         
-                        <div class="row text-center mt-3">
-                            <div class="col-4">
-                                <div class="metric">
+                        <div class="d-flex align-items-center">
+                            <div class="d-flex text-center me-4">
+                                <div class="metric me-4">
                                     <div class="metric-value text-primary">${cluster.active_services}</div>
                                     <div class="metric-label">Serviços</div>
                                 </div>
-                            </div>
-                            <div class="col-4">
-                                <div class="metric">
+                                <div class="metric me-4">
                                     <div class="metric-value text-success">${cluster.running_tasks}</div>
                                     <div class="metric-label">Tasks Rodando</div>
                                 </div>
-                            </div>
-                            <div class="col-4">
-                                <div class="metric">
+                                <div class="metric me-4">
                                     <div class="metric-value text-warning">${cluster.pending_tasks}</div>
                                     <div class="metric-label">Tasks Pendentes</div>
                                 </div>
+                            </div>
+                            
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button class="btn btn-outline-warning" onclick="event.stopPropagation(); toggleFavorite('${cluster.name}')" title="${isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}">
+                                    <i class="bi ${starIcon}"></i>
+                                </button>
+                                <button class="btn btn-outline-info" onclick="event.stopPropagation(); viewClusterDetails('${cluster.name}')">
+                                    <i class="bi bi-info-circle"></i>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -209,7 +207,6 @@ function displayClusters(clusters) {
         `;
     });
     
-    html += '</div>';
     clustersContainer.innerHTML = html;
 }
 
@@ -219,12 +216,23 @@ function displayClusters(clusters) {
 function selectCluster(clusterName) {
     currentCluster = clusterName;
     selectedClusterNameSpan.textContent = clusterName;
+    
+    // Remove seleção anterior
+    document.querySelectorAll('.cluster-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+    
+    // Adiciona seleção ao cluster clicado
+    event.currentTarget.classList.add('selected');
+    
     servicesSection.style.display = 'block';
     tasksSection.style.display = 'none';
     loadServices(clusterName);
     
     // Scroll suave para a seção de serviços
-    servicesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimeout(() => {
+        servicesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
 }
 
 /**
@@ -278,61 +286,78 @@ function displayServices(services, clusterName) {
         return;
     }
     
-    let html = '<div class="table-responsive"><table class="table table-hover">';
-    html += `
-        <thead>
-            <tr>
-                <th>Nome do Serviço</th>
-                <th>Status</th>
-                <th>Launch Type</th>
-                <th>Desired</th>
-                <th>Running</th>
-                <th>Pending</th>
-                <th>Task Definition</th>
-                <th>Ações</th>
-            </tr>
-        </thead>
-        <tbody>
-    `;
+    let html = '<div class="row">';
     
     services.forEach(service => {
         const statusColor = service.status === 'ACTIVE' ? 'success' : 'warning';
         const healthColor = service.running_count === service.desired_count ? 'success' : 'warning';
         const isRunning = service.running_count > 0;
+        const serviceState = isRunning ? 'running' : 'stopped';
         
         html += `
-            <tr>
-                <td><strong>${service.name}</strong></td>
-                <td><span class="badge bg-${statusColor}">${service.status}</span></td>
-                <td>${service.launch_type}</td>
-                <td>${service.desired_count}</td>
-                <td><span class="badge bg-${healthColor}">${service.running_count}</span></td>
-                <td>${service.pending_count}</td>
-                <td><code>${service.task_definition}</code></td>
-                <td>
-                    <div class="btn-group btn-group-sm" role="group">
-                        ${isRunning ? `
-                            <button class="btn btn-outline-danger" onclick="confirmStopService('${clusterName}', '${service.name}')" title="Parar Serviço">
-                                <i class="bi bi-stop-circle"></i>
-                            </button>
-                        ` : `
-                            <button class="btn btn-outline-success" onclick="showStartServiceModal('${clusterName}', '${service.name}')" title="Iniciar Serviço">
-                                <i class="bi bi-play-circle"></i>
-                            </button>
-                        `}
-                        <button class="btn btn-outline-warning" onclick="showChangeCapacityModal('${clusterName}', '${service.name}', '${service.launch_type}')" title="Mudar Capacity Provider">
-                            <i class="bi bi-arrow-left-right"></i>
-                        </button>
-                        <button class="btn btn-outline-info" onclick="viewServiceDetails('${clusterName}', '${service.name}')" title="Ver Detalhes">
-                            <i class="bi bi-info-circle"></i>
-                        </button>
+            <div class="col-md-6 mb-3">
+                <div class="card service-card ${serviceState}">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div>
+                                <h5 class="card-title mb-1">
+                                    <i class="bi bi-box"></i> ${service.name}
+                                </h5>
+                                <span class="badge bg-${statusColor}">${service.status}</span>
+                                <span class="badge bg-secondary ms-1">${service.launch_type}</span>
+                            </div>
+                            <div class="btn-group btn-group-sm" role="group">
+                                ${isRunning ? `
+                                    <button class="btn btn-outline-danger" onclick="confirmStopService('${clusterName}', '${service.name}')" title="Parar Serviço">
+                                        <i class="bi bi-stop-circle"></i>
+                                    </button>
+                                ` : `
+                                    <button class="btn btn-outline-success" onclick="showStartServiceModal('${clusterName}', '${service.name}')" title="Iniciar Serviço">
+                                        <i class="bi bi-play-circle"></i>
+                                    </button>
+                                `}
+                                <button class="btn btn-outline-warning" onclick="showChangeCapacityModal('${clusterName}', '${service.name}', '${service.launch_type}')" title="Mudar Capacity Provider">
+                                    <i class="bi bi-arrow-left-right"></i>
+                                </button>
+                                <button class="btn btn-outline-info" onclick="viewServiceDetails('${clusterName}', '${service.name}')" title="Ver Detalhes">
+                                    <i class="bi bi-info-circle"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <div class="metric">
+                                    <div class="metric-value text-secondary">${service.desired_count}</div>
+                                    <div class="metric-label">Desired</div>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="metric">
+                                    <div class="metric-value text-${healthColor}">${service.running_count}</div>
+                                    <div class="metric-label">Running</div>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="metric">
+                                    <div class="metric-value text-warning">${service.pending_count}</div>
+                                    <div class="metric-label">Pending</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <small class="text-muted">
+                                <i class="bi bi-file-code"></i> Task Definition: <code>${service.task_definition}</code>
+                            </small>
+                        </div>
                     </div>
-                </td>
-            </tr>
+                </div>
+            </div>
         `;
     });
     
-    html += '</tbody></table></div>';
+    html += '</div>';
     servicesContainer.innerHTML = html;
 }
 
