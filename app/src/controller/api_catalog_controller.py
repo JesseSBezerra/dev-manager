@@ -16,6 +16,14 @@ def index():
     return render_template('api_catalog/index.html')
 
 
+@api_catalog_bp.route('/api/<api_id>')
+def api_details_page(api_id):
+    """
+    Página de detalhes de uma API
+    """
+    return render_template('api_catalog/api_details.html', api_id=api_id)
+
+
 # ==================== OWNERS ====================
 
 @api_catalog_bp.route('/owners', methods=['GET'])
@@ -81,7 +89,10 @@ def create_api():
             name=data.get('name'),
             owner_id=data.get('owner_id'),
             base_url=data.get('base_url'),
-            description=data.get('description')
+            description=data.get('description'),
+            content_type=data.get('content_type', 'application/json'),
+            auth_id=data.get('auth_id'),
+            default_headers=data.get('default_headers')
         )
         return jsonify(result), 201 if result['success'] else 400
     except Exception as e:
@@ -161,6 +172,42 @@ def create_authentication():
         }), 500
 
 
+@api_catalog_bp.route('/test-oauth2', methods=['POST'])
+def test_oauth2():
+    """
+    Testa uma autenticação OAuth2
+    """
+    try:
+        data = request.get_json()
+        result = service.test_oauth2_authentication(
+            url=data.get('url'),
+            method=data.get('method', 'POST'),
+            body=data.get('body', {}),
+            headers=data.get('headers', {})
+        )
+        return jsonify(result), 200 if result['success'] else 400
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Erro: {str(e)}'
+        }), 500
+
+
+@api_catalog_bp.route('/authentications/<int:auth_id>', methods=['DELETE'])
+def delete_authentication(auth_id):
+    """
+    Deleta uma autenticação
+    """
+    try:
+        result = service.delete_authentication(auth_id)
+        return jsonify(result), 200 if result['success'] else 404
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Erro: {str(e)}'
+        }), 500
+
+
 # ==================== ENDPOINTS ====================
 
 @api_catalog_bp.route('/endpoints', methods=['GET'])
@@ -198,6 +245,21 @@ def create_endpoint():
             description=data.get('description')
         )
         return jsonify(result), 201 if result['success'] else 400
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Erro: {str(e)}'
+        }), 500
+
+
+@api_catalog_bp.route('/endpoints/<int:endpoint_id>', methods=['DELETE'])
+def delete_endpoint(endpoint_id):
+    """
+    Deleta um endpoint e todas as suas requests
+    """
+    try:
+        result = service.delete_endpoint(endpoint_id)
+        return jsonify(result), 200 if result['success'] else 400
     except Exception as e:
         return jsonify({
             'success': False,
@@ -254,6 +316,21 @@ def create_request():
         }), 500
 
 
+@api_catalog_bp.route('/requests/<int:request_id>', methods=['DELETE'])
+def delete_request(request_id):
+    """
+    Deleta uma request
+    """
+    try:
+        result = service.delete_request(request_id)
+        return jsonify(result), 200 if result['success'] else 400
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Erro: {str(e)}'
+        }), 500
+
+
 # ==================== TEST ====================
 
 @api_catalog_bp.route('/test/<int:request_id>', methods=['POST'])
@@ -265,9 +342,10 @@ def test_request(request_id):
         data = request.get_json() or {}
         result = service.test_request(
             request_id=request_id,
-            body_data=data.get('body'),
-            query_data=data.get('query_params'),
-            headers_data=data.get('headers')
+            body_data=data.get('body_data'),
+            query_data=data.get('query_data'),
+            headers_data=data.get('headers_data'),
+            path_variables=data.get('path_variables')
         )
         return jsonify(result), 200 if result['success'] else 400
     except Exception as e:

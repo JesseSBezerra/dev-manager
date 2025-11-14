@@ -1,0 +1,956 @@
+{% extends "base.html" %}
+
+{% block title %}Detalhes da API - DEV Manager{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-md-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('api_catalog.index') }}">Catálogo de APIs</a></li>
+                <li class="breadcrumb-item active" aria-current="page" id="apiNameBreadcrumb">Carregando...</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<!-- Alertas -->
+<div id="alertContainer"></div>
+
+<!-- Informações da API -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-info-circle"></i> <span id="apiNameTitle">Carregando...</span></h5>
+        <div>
+            <button class="btn btn-sm btn-light" onclick="window.location.href='{{ url_for('api_catalog.index') }}'">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        <div id="apiInfoContent">
+            <div class="text-center">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-2">Carregando informações...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Endpoints -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-list-nested"></i> Endpoints</h5>
+        <button class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#createEndpointModal">
+            <i class="bi bi-plus-circle"></i> Novo Endpoint
+        </button>
+    </div>
+    <div class="card-body">
+        <div id="endpointsContainer">
+            <div class="text-center">
+                <div class="spinner-border text-success" role="status"></div>
+                <p class="mt-2">Carregando endpoints...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Criar Endpoint -->
+<div class="modal fade" id="createEndpointModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-plus-circle"></i> Novo Endpoint</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="endpointPath" class="form-label">Path *</label>
+                    <input type="text" class="form-control" id="endpointPath" placeholder="/users" required>
+                    <small class="text-muted">Exemplo: /users, /products/{id}</small>
+                </div>
+                <div class="mb-3">
+                    <label for="endpointDescription" class="form-label">Descrição</label>
+                    <textarea class="form-control" id="endpointDescription" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="createEndpointBtn">
+                    <i class="bi bi-plus-circle"></i> Criar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Testar Request -->
+<div class="modal fade" id="testRequestModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-play-circle"></i> Testar Request: <span id="testRequestTitle"></span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <!-- Configuração do Teste -->
+                    <div class="col-md-6">
+                        <h6 class="text-primary"><i class="bi bi-gear"></i> Configuração</h6>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Método</label>
+                            <input type="text" class="form-control" id="testMethod" readonly>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">URL Completa</label>
+                            <input type="text" class="form-control font-monospace" id="testUrl" readonly>
+                        </div>
+                        
+                        <!-- Accordion para Path Variables, Body, Query Params e Headers -->
+                        <div class="accordion mb-3" id="testAccordion">
+                            
+                            <!-- Path Variables (só aparece se houver variáveis no path) -->
+                            <div class="accordion-item" id="pathVariablesAccordion" style="display: none;">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePathVars">
+                                        <i class="bi bi-link-45deg me-2"></i> Path Variables
+                                    </button>
+                                </h2>
+                                <div id="collapsePathVars" class="accordion-collapse collapse" data-bs-parent="#testAccordion">
+                                    <div class="accordion-body">
+                                        <div id="pathVariablesContainer"></div>
+                                        <small class="text-muted">Informe os valores para substituir as variáveis no path</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Body -->
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseBody">
+                                        <i class="bi bi-file-earmark-code me-2"></i> Body (JSON)
+                                    </button>
+                                </h2>
+                                <div id="collapseBody" class="accordion-collapse collapse" data-bs-parent="#testAccordion">
+                                    <div class="accordion-body">
+                                        <textarea class="form-control font-monospace" id="testBody" rows="8"></textarea>
+                                        <small class="text-muted">Edite os valores conforme necessário</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Query Params -->
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseQuery">
+                                        <i class="bi bi-question-circle me-2"></i> Query Params (JSON)
+                                    </button>
+                                </h2>
+                                <div id="collapseQuery" class="accordion-collapse collapse" data-bs-parent="#testAccordion">
+                                    <div class="accordion-body">
+                                        <textarea class="form-control font-monospace" id="testQueryParams" rows="3"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Headers -->
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseHeaders">
+                                        <i class="bi bi-list-ul me-2"></i> Headers (JSON)
+                                    </button>
+                                </h2>
+                                <div id="collapseHeaders" class="accordion-collapse collapse" data-bs-parent="#testAccordion">
+                                    <div class="accordion-body">
+                                        <textarea class="form-control font-monospace" id="testHeaders" rows="3"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                        </div>
+                        
+                        <button type="button" class="btn btn-success w-100" id="executeTestBtn">
+                            <i class="bi bi-play-fill"></i> Executar Teste
+                        </button>
+                    </div>
+                    
+                    <!-- Resultado do Teste -->
+                    <div class="col-md-6">
+                        <h6 class="text-success"><i class="bi bi-check-circle"></i> Resultado</h6>
+                        
+                        <div id="testResult" class="border rounded p-3" style="min-height: 400px; max-height: 600px; overflow-y: auto; background-color: #f8f9fa;">
+                            <p class="text-muted text-center">Clique em "Executar Teste" para ver o resultado</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Criar Request -->
+<div class="modal fade" id="createRequestModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-plus-circle"></i> Nova Request</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="requestName" class="form-label">Nome *</label>
+                        <input type="text" class="form-control" id="requestName" placeholder="Criar usuário" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="requestMethod" class="form-label">Método *</label>
+                        <select class="form-select" id="requestMethod" required>
+                            <option value="GET">GET</option>
+                            <option value="POST" selected>POST</option>
+                            <option value="PUT">PUT</option>
+                            <option value="PATCH">PATCH</option>
+                            <option value="DELETE">DELETE</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="requestContentType" class="form-label">Content-Type</label>
+                        <select class="form-select" id="requestContentType">
+                            <option value="application/json">application/json</option>
+                            <option value="multipart/form-data">multipart/form-data</option>
+                            <option value="application/x-www-form-urlencoded">application/x-www-form-urlencoded</option>
+                            <option value="application/xml">application/xml</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="requestAuth" class="form-label">Autenticação</label>
+                        <select class="form-select" id="requestAuth">
+                            <option value="">Usar padrão da API</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Request Body -->
+                <div class="card border-info mb-3">
+                    <div class="card-header bg-info text-white">
+                        <h6 class="mb-0"><i class="bi bi-code-square"></i> Request Body (JSON)</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <textarea class="form-control font-monospace" id="requestBody" rows="12" placeholder='{"nome": "Jessé", "pessoa": {"nome": "João"}, "lista": [{"id": 1}]}'></textarea>
+                                <button type="button" class="btn btn-sm btn-success mt-2" id="analyzeBodyBtn">
+                                    <i class="bi bi-search"></i> Analisar Estrutura
+                                </button>
+                                <button type="button" class="btn btn-sm btn-secondary mt-2" id="clearBodyBtn">
+                                    <i class="bi bi-x-circle"></i> Limpar
+                                </button>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="text-info"><i class="bi bi-list-tree"></i> Estrutura do Body:</h6>
+                                <div id="bodyStructure" class="border rounded p-2" style="max-height: 400px; overflow-y: auto; background-color: #f8f9fa;">
+                                    <p class="text-muted text-center">Clique em "Analisar Estrutura" para visualizar</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Headers Customizados -->
+                <div class="mb-3">
+                    <label for="requestHeaders" class="form-label">Headers Customizados (JSON)</label>
+                    <textarea class="form-control font-monospace" id="requestHeaders" rows="3" placeholder='{"X-Custom-Header": "value"}'></textarea>
+                    <small class="text-muted">Headers específicos desta request (sobrescreve headers da API)</small>
+                </div>
+                
+                <!-- Query Params -->
+                <div class="mb-3">
+                    <label for="requestQueryParams" class="form-label">Query Params (JSON)</label>
+                    <textarea class="form-control font-monospace" id="requestQueryParams" rows="3" placeholder='{"page": 1, "limit": 10}'></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="createRequestBtn">
+                    <i class="bi bi-plus-circle"></i> Criar Request
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const API_ID = '{{ api_id }}';
+const alertContainer = document.getElementById('alertContainer');
+
+// Carregar ao iniciar
+document.addEventListener('DOMContentLoaded', () => {
+    loadApiDetails();
+    loadEndpoints();
+});
+
+// Variáveis globais
+let currentEndpointId = null;
+let currentRequestId = null;
+let currentApiData = null;
+let currentEndpointPath = null;
+
+// Event Listeners
+document.getElementById('createEndpointBtn').addEventListener('click', createEndpoint);
+document.getElementById('analyzeBodyBtn').addEventListener('click', analyzeBodyStructure);
+document.getElementById('clearBodyBtn').addEventListener('click', clearBody);
+document.getElementById('createRequestBtn').addEventListener('click', createRequest);
+document.getElementById('executeTestBtn').addEventListener('click', executeTest);
+
+function showAlert(message, type = 'info') {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.role = 'alert';
+    
+    alertDiv.innerHTML = `
+        <strong>${type === 'success' ? '✅' : type === 'danger' ? '❌' : 'ℹ️'}</strong> ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    alertContainer.appendChild(alertDiv);
+    
+    setTimeout(() => {
+        alertDiv.remove();
+    }, 5000);
+}
+
+async function loadApiDetails() {
+    try {
+        const response = await fetch(`/api-catalog/apis/${API_ID}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            const api = result.api;
+            currentApiData = api; // Salvar para uso posterior
+            
+            // Atualizar título e breadcrumb
+            document.getElementById('apiNameTitle').textContent = api.name;
+            document.getElementById('apiNameBreadcrumb').textContent = api.name;
+            
+            // Exibir informações
+            let html = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Nome:</strong> ${api.name}</p>
+                        <p><strong>Dono:</strong> ${api.owner_name}</p>
+                        ${api.base_url ? `<p><strong>Base URL:</strong> <code>${api.base_url}</code></p>` : ''}
+                        ${api.content_type ? `<p><strong>Content-Type:</strong> <code>${api.content_type}</code></p>` : ''}
+                    </div>
+                    <div class="col-md-6">
+                        ${api.description ? `<p><strong>Descrição:</strong> ${api.description}</p>` : ''}
+                        ${api.auth_id ? `<p><strong>Autenticação:</strong> <span class="badge bg-success">Configurada</span></p>` : '<p><strong>Autenticação:</strong> <span class="badge bg-secondary">Nenhuma</span></p>'}
+                        ${api.default_headers ? `<p><strong>Headers Padrão:</strong> <span class="badge bg-info">Configurados</span></p>` : ''}
+                    </div>
+                </div>
+                
+                ${api.default_headers ? `
+                    <hr>
+                    <h6><i class="bi bi-code-square"></i> Headers Padrão:</h6>
+                    <pre class="bg-light p-2 rounded"><code>${JSON.stringify(api.default_headers, null, 2)}</code></pre>
+                ` : ''}
+            `;
+            
+            document.getElementById('apiInfoContent').innerHTML = html;
+        } else {
+            document.getElementById('apiInfoContent').innerHTML = `
+                <div class="alert alert-danger">${result.message}</div>
+            `;
+        }
+    } catch (error) {
+        document.getElementById('apiInfoContent').innerHTML = `
+            <div class="alert alert-danger">Erro: ${error.message}</div>
+        `;
+    }
+}
+
+async function loadEndpoints() {
+    const container = document.getElementById('endpointsContainer');
+    
+    try {
+        const response = await fetch(`/api-catalog/endpoints?api_id=${API_ID}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            displayEndpoints(result.endpoints);
+        } else {
+            container.innerHTML = `<div class="alert alert-danger">${result.message}</div>`;
+        }
+    } catch (error) {
+        container.innerHTML = `<div class="alert alert-danger">Erro: ${error.message}</div>`;
+    }
+}
+
+function displayEndpoints(endpoints) {
+    const container = document.getElementById('endpointsContainer');
+    
+    if (endpoints.length === 0) {
+        container.innerHTML = '<div class="text-center text-muted"><p>Nenhum endpoint cadastrado</p></div>';
+        return;
+    }
+    
+    let html = '<div class="accordion" id="endpointsAccordion">';
+    
+    endpoints.forEach((endpoint, index) => {
+        html += `
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="heading${endpoint.id}">
+                    <button class="accordion-button ${index > 0 ? 'collapsed' : ''}" type="button" 
+                            data-bs-toggle="collapse" data-bs-target="#collapse${endpoint.id}">
+                        <strong>${endpoint.path}</strong>
+                        ${endpoint.description ? `<small class="text-muted ms-2">- ${endpoint.description}</small>` : ''}
+                    </button>
+                </h2>
+                <div id="collapse${endpoint.id}" class="accordion-collapse collapse ${index === 0 ? 'show' : ''}" 
+                     data-bs-parent="#endpointsAccordion">
+                    <div class="accordion-body">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div>
+                                <p class="mb-1"><strong>Path:</strong> <code>${endpoint.path}</code></p>
+                                ${endpoint.description ? `<p class="mb-0"><strong>Descrição:</strong> ${endpoint.description}</p>` : ''}
+                            </div>
+                            <button class="btn btn-sm btn-danger" onclick="deleteEndpoint(${endpoint.id})" 
+                                    title="Deletar endpoint">
+                                <i class="bi bi-trash"></i> Deletar
+                            </button>
+                        </div>
+                        <hr>
+                        <h6>Requests</h6>
+                        <div id="requests_${endpoint.id}">
+                            <p class="text-muted">Carregando requests...</p>
+                        </div>
+                        <button class="btn btn-sm btn-primary mt-2" onclick="openCreateRequestModal(${endpoint.id}, '${endpoint.path}')">
+                            <i class="bi bi-plus"></i> Nova Request
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
+    
+    // Carregar requests de cada endpoint
+    endpoints.forEach(endpoint => {
+        loadRequests(endpoint.id);
+    });
+}
+
+async function loadRequests(endpointId) {
+    const container = document.getElementById(`requests_${endpointId}`);
+    
+    try {
+        const response = await fetch(`/api-catalog/requests?endpoint_id=${endpointId}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            if (result.requests.length === 0) {
+                container.innerHTML = '<p class="text-muted">Nenhuma request cadastrada</p>';
+            } else {
+                let html = '<div class="list-group">';
+                result.requests.forEach(req => {
+                    const methodColor = {
+                        'GET': 'success',
+                        'POST': 'primary',
+                        'PUT': 'warning',
+                        'DELETE': 'danger',
+                        'PATCH': 'info'
+                    }[req.method] || 'secondary';
+                    
+                    // Escapar dados para passar como atributo
+                    const reqData = JSON.stringify(req).replace(/"/g, '&quot;');
+                    
+                    html += `
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="badge bg-${methodColor}">${req.method}</span>
+                                    <strong>${req.name}</strong>
+                                </div>
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-success" onclick='openTestModal(${req.id}, ${JSON.stringify(req)})'>
+                                        <i class="bi bi-play-circle"></i> Testar
+                                    </button>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteRequest(${req.id}, ${endpointId})">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                container.innerHTML = html;
+            }
+        }
+    } catch (error) {
+        container.innerHTML = `<p class="text-danger">Erro ao carregar requests</p>`;
+    }
+}
+
+async function createEndpoint() {
+    const path = document.getElementById('endpointPath').value.trim();
+    const description = document.getElementById('endpointDescription').value.trim();
+    
+    if (!path) {
+        showAlert('Path é obrigatório', 'warning');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api-catalog/endpoints', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ api_id: API_ID, path, description })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showAlert(result.message, 'success');
+            bootstrap.Modal.getInstance(document.getElementById('createEndpointModal')).hide();
+            document.getElementById('endpointPath').value = '';
+            document.getElementById('endpointDescription').value = '';
+            loadEndpoints();
+        } else {
+            showAlert(result.message, 'danger');
+        }
+    } catch (error) {
+        showAlert(`Erro: ${error.message}`, 'danger');
+    }
+}
+
+function openCreateRequestModal(endpointId, endpointPath) {
+    currentEndpointId = endpointId;
+    currentEndpointPath = endpointPath;
+    
+    // Limpar campos
+    document.getElementById('requestName').value = '';
+    document.getElementById('requestMethod').value = 'POST';
+    document.getElementById('requestContentType').value = 'application/json';
+    document.getElementById('requestAuth').value = '';
+    document.getElementById('requestBody').value = '';
+    document.getElementById('requestHeaders').value = '';
+    document.getElementById('requestQueryParams').value = '';
+    document.getElementById('bodyStructure').innerHTML = '<p class="text-muted text-center">Clique em "Analisar Estrutura" para visualizar</p>';
+    
+    // Abrir modal
+    new bootstrap.Modal(document.getElementById('createRequestModal')).show();
+}
+
+function analyzeBodyStructure() {
+    const bodyText = document.getElementById('requestBody').value.trim();
+    const container = document.getElementById('bodyStructure');
+    
+    if (!bodyText) {
+        container.innerHTML = '<p class="text-muted text-center">Body vazio</p>';
+        return;
+    }
+    
+    try {
+        const bodyJson = JSON.parse(bodyText);
+        container.innerHTML = buildJsonTree(bodyJson, '');
+    } catch (e) {
+        container.innerHTML = `<div class="alert alert-danger mb-0">JSON inválido: ${e.message}</div>`;
+    }
+}
+
+function buildJsonTree(obj, path = '', level = 0) {
+    let html = '';
+    const indent = level * 20;
+    
+    for (let key in obj) {
+        if (!obj.hasOwnProperty(key)) continue;
+        
+        const value = obj[key];
+        const currentPath = path ? `${path}.${key}` : key;
+        const type = getJsonType(value);
+        const uniqueId = `node_${currentPath.replace(/\./g, '_').replace(/\[/g, '_').replace(/\]/g, '_')}`;
+        
+        html += `<div style="margin-left: ${indent}px;" class="mb-1">`;
+        
+        if (type === 'object' || type === 'array') {
+            // Item expansível
+            html += `
+                <div class="d-flex align-items-center">
+                    <button class="btn btn-sm btn-link p-0 me-2" onclick="toggleNode('${uniqueId}')" style="text-decoration: none;">
+                        <i class="bi bi-chevron-right" id="icon_${uniqueId}"></i>
+                    </button>
+                    <span class="badge bg-secondary me-2">${key}</span>
+                    <span class="badge bg-info me-2">${type}</span>
+                    ${type === 'array' ? `<span class="text-muted">[${value.length} items]</span>` : ''}
+                </div>
+                <div id="${uniqueId}" style="display: none;">
+            `;
+            
+            if (type === 'array') {
+                value.forEach((item, index) => {
+                    html += buildJsonTree({[index]: item}, `${currentPath}`, level + 1);
+                });
+            } else {
+                html += buildJsonTree(value, currentPath, level + 1);
+            }
+            
+            html += '</div>';
+        } else {
+            // Item simples
+            html += `
+                <div class="d-flex align-items-center">
+                    <span style="width: 20px;"></span>
+                    <span class="badge bg-secondary me-2">${key}</span>
+                    <span class="badge bg-primary me-2">${type}</span>
+                    <code class="text-success">${formatValue(value, type)}</code>
+                </div>
+            `;
+        }
+        
+        html += '</div>';
+    }
+    
+    return html;
+}
+
+function getJsonType(value) {
+    if (value === null) return 'null';
+    if (Array.isArray(value)) return 'array';
+    if (typeof value === 'object') return 'object';
+    if (typeof value === 'string') return 'string';
+    if (typeof value === 'number') return 'number';
+    if (typeof value === 'boolean') return 'boolean';
+    return 'unknown';
+}
+
+function formatValue(value, type) {
+    if (type === 'string') return `"${value}"`;
+    if (type === 'null') return 'null';
+    return String(value);
+}
+
+function toggleNode(nodeId) {
+    const node = document.getElementById(nodeId);
+    const icon = document.getElementById(`icon_${nodeId}`);
+    
+    if (node.style.display === 'none') {
+        node.style.display = 'block';
+        icon.className = 'bi bi-chevron-down';
+    } else {
+        node.style.display = 'none';
+        icon.className = 'bi bi-chevron-right';
+    }
+}
+
+function clearBody() {
+    document.getElementById('requestBody').value = '';
+    document.getElementById('bodyStructure').innerHTML = '<p class="text-muted text-center">Clique em "Analisar Estrutura" para visualizar</p>';
+}
+
+async function createRequest() {
+    const name = document.getElementById('requestName').value.trim();
+    const method = document.getElementById('requestMethod').value;
+    const contentType = document.getElementById('requestContentType').value;
+    const authId = document.getElementById('requestAuth').value;
+    const bodyText = document.getElementById('requestBody').value.trim();
+    const headersText = document.getElementById('requestHeaders').value.trim();
+    const queryParamsText = document.getElementById('requestQueryParams').value.trim();
+    
+    if (!name || !method) {
+        showAlert('Nome e Método são obrigatórios', 'warning');
+        return;
+    }
+    
+    // Validar JSONs
+    let bodyTemplate = null;
+    let headers = null;
+    let queryParams = null;
+    
+    try {
+        if (bodyText) bodyTemplate = JSON.parse(bodyText);
+        if (headersText) headers = JSON.parse(headersText);
+        if (queryParamsText) queryParams = JSON.parse(queryParamsText);
+    } catch (e) {
+        showAlert('JSON inválido: ' + e.message, 'danger');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api-catalog/requests', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                endpoint_id: currentEndpointId,
+                method: method,
+                name: name,
+                content_type: contentType,
+                auth_id: authId || null,
+                headers: headers,
+                body_template: bodyTemplate,
+                query_params: queryParams
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showAlert(result.message, 'success');
+            bootstrap.Modal.getInstance(document.getElementById('createRequestModal')).hide();
+            loadRequests(currentEndpointId);
+        } else {
+            showAlert(result.message, 'danger');
+        }
+    } catch (error) {
+        showAlert(`Erro: ${error.message}`, 'danger');
+    }
+}
+
+async function openTestModal(requestId, requestData) {
+    currentRequestId = requestId;
+    
+    // Buscar dados completos da request se não foram passados
+    if (!requestData) {
+        try {
+            const response = await fetch(`/api-catalog/requests/${requestId}`);
+            const result = await response.json();
+            if (result.success) {
+                requestData = result.request;
+            } else {
+                showAlert('Erro ao carregar dados da request', 'danger');
+                return;
+            }
+        } catch (error) {
+            showAlert(`Erro: ${error.message}`, 'danger');
+            return;
+        }
+    }
+    
+    // Buscar endpoint para pegar o path
+    let endpointPath = '';
+    try {
+        const response = await fetch(`/api-catalog/endpoints?api_id=${API_ID}`);
+        const result = await response.json();
+        if (result.success) {
+            const endpoint = result.endpoints.find(e => e.id === requestData.endpoint_id);
+            if (endpoint) {
+                endpointPath = endpoint.path;
+            }
+        }
+    } catch (error) {
+        console.error('Erro ao buscar endpoint:', error);
+    }
+    
+    // Detectar path variables (ex: {id}, {userId})
+    const pathVarRegex = /\{([^}]+)\}/g;
+    const pathVariables = [];
+    let match;
+    while ((match = pathVarRegex.exec(endpointPath)) !== null) {
+        pathVariables.push(match[1]);
+    }
+    
+    // Mostrar/ocultar accordion de path variables
+    const pathVarsAccordion = document.getElementById('pathVariablesAccordion');
+    const pathVarsContainer = document.getElementById('pathVariablesContainer');
+    
+    if (pathVariables.length > 0) {
+        pathVarsAccordion.style.display = 'block';
+        
+        // Criar campos para cada path variable
+        let pathVarsHtml = '';
+        pathVariables.forEach(varName => {
+            pathVarsHtml += `
+                <div class="mb-2">
+                    <label class="form-label fw-bold">{${varName}}</label>
+                    <input type="text" class="form-control" id="pathVar_${varName}" placeholder="Valor para ${varName}">
+                </div>
+            `;
+        });
+        pathVarsContainer.innerHTML = pathVarsHtml;
+    } else {
+        pathVarsAccordion.style.display = 'none';
+    }
+    
+    // Preencher modal de teste
+    document.getElementById('testRequestTitle').textContent = requestData.name || 'Sem nome';
+    document.getElementById('testMethod').value = requestData.method;
+    
+    // Construir URL completa
+    const baseUrl = currentApiData?.base_url || '';
+    const fullUrl = baseUrl + endpointPath;
+    document.getElementById('testUrl').value = fullUrl;
+    
+    // Preencher body, query params e headers
+    document.getElementById('testBody').value = requestData.body_template ? JSON.stringify(requestData.body_template, null, 2) : '';
+    document.getElementById('testQueryParams').value = requestData.query_params ? JSON.stringify(requestData.query_params, null, 2) : '';
+    document.getElementById('testHeaders').value = requestData.headers ? JSON.stringify(requestData.headers, null, 2) : '';
+    
+    // Limpar resultado anterior
+    document.getElementById('testResult').innerHTML = '<p class="text-muted text-center">Clique em "Executar Teste" para ver o resultado</p>';
+    
+    // Abrir modal
+    new bootstrap.Modal(document.getElementById('testRequestModal')).show();
+}
+
+async function executeTest() {
+    const bodyText = document.getElementById('testBody').value.trim();
+    const queryParamsText = document.getElementById('testQueryParams').value.trim();
+    const headersText = document.getElementById('testHeaders').value.trim();
+    const resultContainer = document.getElementById('testResult');
+    
+    // Coletar path variables
+    const pathVariables = {};
+    const pathVarInputs = document.querySelectorAll('[id^="pathVar_"]');
+    pathVarInputs.forEach(input => {
+        const varName = input.id.replace('pathVar_', '');
+        const varValue = input.value.trim();
+        if (varValue) {
+            pathVariables[varName] = varValue;
+        }
+    });
+    
+    // Validar JSONs
+    let body = null;
+    let queryParams = null;
+    let headers = null;
+    
+    try {
+        if (bodyText) body = JSON.parse(bodyText);
+        if (queryParamsText) queryParams = JSON.parse(queryParamsText);
+        if (headersText) headers = JSON.parse(headersText);
+    } catch (e) {
+        resultContainer.innerHTML = `<div class="alert alert-danger">JSON inválido: ${e.message}</div>`;
+        return;
+    }
+    
+    // Mostrar loading
+    resultContainer.innerHTML = `
+        <div class="text-center">
+            <div class="spinner-border text-success" role="status"></div>
+            <p class="mt-2">Executando request...</p>
+        </div>
+    `;
+    
+    try {
+        const response = await fetch(`/api-catalog/test/${currentRequestId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                body_data: body,
+                query_data: queryParams,
+                headers_data: headers,
+                path_variables: pathVariables
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            displayTestResult(result);
+        } else {
+            resultContainer.innerHTML = `<div class="alert alert-danger">${result.message}</div>`;
+        }
+    } catch (error) {
+        resultContainer.innerHTML = `<div class="alert alert-danger">Erro: ${error.message}</div>`;
+    }
+}
+
+function displayTestResult(result) {
+    const container = document.getElementById('testResult');
+    
+    let html = `
+        <div class="mb-3">
+            <h6 class="text-success"><i class="bi bi-check-circle"></i> Status: ${result.status_code}</h6>
+            <p><strong>Tempo:</strong> ${result.elapsed_time}s</p>
+        </div>
+        
+        <div class="mb-3">
+            <h6><i class="bi bi-code-square"></i> Headers da Resposta:</h6>
+            <pre class="bg-light p-2 rounded" style="max-height: 150px; overflow-y: auto;"><code>${JSON.stringify(result.response_headers, null, 2)}</code></pre>
+        </div>
+        
+        <div class="mb-3">
+            <h6><i class="bi bi-file-earmark-text"></i> Body da Resposta:</h6>
+    `;
+    
+    // Tentar exibir como JSON estruturado
+    if (result.response_body && typeof result.response_body === 'object') {
+        html += `
+            <div class="border rounded p-2" style="max-height: 400px; overflow-y: auto; background-color: #fff;">
+                ${buildJsonTree(result.response_body, '', 0)}
+            </div>
+        `;
+    } else {
+        // Exibir como texto
+        html += `
+            <pre class="bg-light p-2 rounded" style="max-height: 400px; overflow-y: auto;"><code>${JSON.stringify(result.response_body, null, 2)}</code></pre>
+        `;
+    }
+    
+    html += '</div>';
+    
+    if (result.error) {
+        html += `<div class="alert alert-warning"><strong>Aviso:</strong> ${result.error}</div>`;
+    }
+    
+    container.innerHTML = html;
+}
+
+async function deleteRequest(requestId, endpointId) {
+    if (!confirm('Tem certeza que deseja deletar esta request?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api-catalog/requests/${requestId}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showAlert(result.message, 'success');
+            loadRequests(endpointId);
+        } else {
+            showAlert(result.message, 'danger');
+        }
+    } catch (error) {
+        showAlert(`Erro: ${error.message}`, 'danger');
+    }
+}
+
+async function deleteEndpoint(endpointId) {
+    if (!confirm('Tem certeza que deseja deletar este endpoint?\n\nATENÇÃO: Todas as requests vinculadas a este endpoint também serão deletadas!')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api-catalog/endpoints/${endpointId}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showAlert(result.message, 'success');
+            loadEndpoints();
+        } else {
+            showAlert(result.message, 'danger');
+        }
+    } catch (error) {
+        showAlert(`Erro: ${error.message}`, 'danger');
+    }
+}
+</script>
+{% endblock %}

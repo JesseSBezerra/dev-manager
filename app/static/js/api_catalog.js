@@ -10,6 +10,8 @@ let currentRequestId = null;
 let allOwners = [];
 let allApis = [];
 let allAuths = [];
+let oauth2ResponseData = null;
+let selectedOAuth2Fields = [];
 
 // Event Listeners
 document.getElementById('refreshApisBtn').addEventListener('click', loadApis);
@@ -22,6 +24,10 @@ document.getElementById('filterOwner').addEventListener('change', filterApis);
 document.getElementById('filterAuthOwner').addEventListener('change', filterAuthentications);
 document.getElementById('executeTestBtn').addEventListener('click', executeTest);
 document.getElementById('clearTestBtn').addEventListener('click', clearTestFields);
+document.getElementById('authType').addEventListener('change', toggleAuthFields);
+document.getElementById('testOAuth2Btn').addEventListener('click', testOAuth2Authentication);
+document.getElementById('clearOAuth2TestBtn').addEventListener('click', clearOAuth2Response);
+document.getElementById('apiAuth').addEventListener('change', updateApiAuthFields);
 
 // Carregar ao iniciar
 document.addEventListener('DOMContentLoaded', () => {
@@ -193,6 +199,71 @@ function populateOwnerSelects() {
             select.value = currentValue;
         }
     });
+    
+    // Popular select de autenticações no modal de API
+    populateAuthSelect();
+}
+
+function populateAuthSelect() {
+    const authSelect = document.getElementById('apiAuth');
+    if (!authSelect) return;
+    
+    const currentValue = authSelect.value;
+    authSelect.innerHTML = '<option value="">Nenhuma</option>';
+    
+    allAuths.forEach(auth => {
+        const option = document.createElement('option');
+        option.value = auth.id;
+        option.textContent = `${auth.name} (${auth.auth_type})`;
+        option.dataset.authType = auth.auth_type;
+        option.dataset.authConfig = JSON.stringify(auth.auth_config);
+        option.dataset.tokenField = auth.token_field || '';
+        authSelect.appendChild(option);
+    });
+    
+    if (currentValue) {
+        authSelect.value = currentValue;
+    }
+}
+
+function updateApiAuthFields() {
+    const authSelect = document.getElementById('apiAuth');
+    const authFieldsInfo = document.getElementById('apiAuthFieldsInfo');
+    const authFieldsList = document.getElementById('apiAuthFieldsList');
+    
+    const selectedOption = authSelect.options[authSelect.selectedIndex];
+    
+    if (!selectedOption || !selectedOption.value) {
+        authFieldsInfo.style.display = 'none';
+        return;
+    }
+    
+    const authType = selectedOption.dataset.authType;
+    const authConfig = JSON.parse(selectedOption.dataset.authConfig || '{}');
+    const tokenField = selectedOption.dataset.tokenField;
+    
+    // Extrair campos disponíveis
+    let availableFields = [];
+    
+    if (authType === 'oauth2' && authConfig.selected_fields) {
+        availableFields = authConfig.selected_fields;
+    } else if (tokenField) {
+        availableFields = [tokenField];
+    }
+    
+    if (availableFields.length > 0) {
+        authFieldsInfo.style.display = 'block';
+        
+        let html = '<div class="d-flex flex-wrap gap-2">';
+        availableFields.forEach(field => {
+            html += `<span class="badge bg-info"><code>\${${field}}</code></span>`;
+        });
+        html += '</div>';
+        
+        authFieldsList.innerHTML = html;
+    } else {
+        authFieldsInfo.style.display = 'none';
+    }
 }
 
 // ==================== APIS ====================
@@ -262,17 +333,39 @@ async function createApi() {
     const ownerId = document.getElementById('apiOwner').value;
     const baseUrl = document.getElementById('apiBaseUrl').value.trim();
     const description = document.getElementById('apiDescription').value.trim();
+    const contentType = document.getElementById('apiContentType').value;
+    const authId = document.getElementById('apiAuth').value;
+    const headersText = document.getElementById('apiHeaders').value.trim();
     
     if (!name || !ownerId) {
         showAlert('Nome e Dono são obrigatórios', 'warning');
         return;
     }
     
+    // Validar JSON dos headers se preenchido
+    let headers = null;
+    if (headersText) {
+        try {
+            headers = JSON.parse(headersText);
+        } catch (e) {
+            showAlert('Headers inválidos. Use formato JSON válido.', 'danger');
+            return;
+        }
+    }
+    
     try {
         const response = await fetch('/api-catalog/apis', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, owner_id: ownerId, base_url: baseUrl, description })
+            body: JSON.stringify({ 
+                name, 
+                owner_id: ownerId, 
+                base_url: baseUrl, 
+                description,
+                content_type: contentType,
+                auth_id: authId || null,
+                default_headers: headers
+            })
         });
         
         const result = await response.json();
@@ -280,9 +373,7 @@ async function createApi() {
         if (result.success) {
             showAlert(result.message, 'success');
             bootstrap.Modal.getInstance(document.getElementById('createApiModal')).hide();
-            document.getElementById('apiName').value = '';
-            document.getElementById('apiBaseUrl').value = '';
-            document.getElementById('apiDescription').value = '';
+            resetApiModal();
             loadApis();
         } else {
             showAlert(result.message, 'danger');
@@ -290,6 +381,16 @@ async function createApi() {
     } catch (error) {
         showAlert(`Erro: ${error.message}`, 'danger');
     }
+}
+
+function resetApiModal() {
+    document.getElementById('apiName').value = '';
+    document.getElementById('apiBaseUrl').value = '';
+    document.getElementById('apiDescription').value = '';
+    document.getElementById('apiContentType').value = 'application/json';
+    document.getElementById('apiAuth').value = '';
+    document.getElementById('apiHeaders').value = '';
+    document.getElementById('apiAuthFieldsInfo').style.display = 'none';
 }
 
 async function deleteApi(apiId, apiName) {
@@ -321,6 +422,23 @@ function viewApiDetails(apiId) {
 }
 
 // ==================== AUTHENTICATIONS ====================
+
+function toggleAuthFields() {
+    const authType = document.getElementById('authType').value;
+    const standardFields = document.getElementById('standardAuthFields');
+    const oauth2Fields = document.getElementById('oauth2Fields');
+    
+    if (authType === 'oauth2') {
+        standardFields.style.display = 'none';
+        oauth2Fields.style.display = 'block';
+    } else {
+        standardFields.style.display = 'block';
+        oauth2Fields.style.display = 'none';
+    }
+    
+    // Limpar resposta OAuth2 ao trocar tipo
+    clearOAuth2Response();
+}
 
 async function loadAuthentications() {
     const container = authContainer;
@@ -390,19 +508,59 @@ async function createAuthentication() {
     const name = document.getElementById('authName').value.trim();
     const ownerId = document.getElementById('authOwner').value;
     const authType = document.getElementById('authType').value;
-    const authConfig = document.getElementById('authConfig').value.trim();
-    const tokenField = document.getElementById('authTokenField').value.trim();
     
     if (!name || !ownerId || !authType) {
         showAlert('Nome, Dono e Tipo são obrigatórios', 'warning');
         return;
     }
     
+    let authConfig = {};
+    let tokenField = '';
+    
+    if (authType === 'oauth2') {
+        const url = document.getElementById('oauth2Url').value.trim();
+        const method = document.getElementById('oauth2Method').value;
+        const bodyText = document.getElementById('oauth2Body').value.trim();
+        const headersText = document.getElementById('oauth2Headers').value.trim();
+        tokenField = document.getElementById('oauth2TokenField').value.trim();
+        
+        if (!url || !bodyText || !tokenField) {
+            showAlert('Para OAuth2: URL, Body e Campo do Token são obrigatórios', 'warning');
+            return;
+        }
+        
+        try {
+            const body = JSON.parse(bodyText);
+            const headers = headersText ? JSON.parse(headersText) : {};
+            
+            authConfig = {
+                url: url,
+                method: method,
+                body: body,
+                headers: headers,
+                selected_fields: selectedOAuth2Fields
+            };
+        } catch (e) {
+            showAlert('JSON inválido no Body ou Headers', 'danger');
+            return;
+        }
+    } else {
+        const token = document.getElementById('authToken').value.trim();
+        tokenField = document.getElementById('authTokenField').value.trim();
+        authConfig = { token: token };
+    }
+    
     try {
         const response = await fetch('/api-catalog/authentications', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, owner_id: ownerId, auth_type: authType, auth_config: authConfig, token_field: tokenField })
+            body: JSON.stringify({ 
+                name, 
+                owner_id: ownerId, 
+                auth_type: authType, 
+                auth_config: authConfig, 
+                token_field: tokenField 
+            })
         });
         
         const result = await response.json();
@@ -410,9 +568,7 @@ async function createAuthentication() {
         if (result.success) {
             showAlert(result.message, 'success');
             bootstrap.Modal.getInstance(document.getElementById('createAuthModal')).hide();
-            document.getElementById('authName').value = '';
-            document.getElementById('authConfig').value = '';
-            document.getElementById('authTokenField').value = '';
+            resetAuthModal();
             loadAuthentications();
         } else {
             showAlert(result.message, 'danger');
@@ -420,6 +576,170 @@ async function createAuthentication() {
     } catch (error) {
         showAlert(`Erro: ${error.message}`, 'danger');
     }
+}
+
+function resetAuthModal() {
+    document.getElementById('authName').value = '';
+    document.getElementById('authToken').value = '';
+    document.getElementById('authTokenField').value = '';
+    document.getElementById('oauth2Url').value = '';
+    document.getElementById('oauth2Body').value = '';
+    document.getElementById('oauth2Headers').value = '';
+    document.getElementById('oauth2TokenField').value = 'access_token';
+    oauth2ResponseData = null;
+    selectedOAuth2Fields = [];
+    clearOAuth2Response();
+}
+
+async function testOAuth2Authentication() {
+    const url = document.getElementById('oauth2Url').value.trim();
+    const method = document.getElementById('oauth2Method').value;
+    const bodyText = document.getElementById('oauth2Body').value.trim();
+    const headersText = document.getElementById('oauth2Headers').value.trim();
+    
+    if (!url || !bodyText) {
+        showAlert('URL e Body são obrigatórios para testar', 'warning');
+        return;
+    }
+    
+    let body, headers;
+    try {
+        body = JSON.parse(bodyText);
+        headers = headersText ? JSON.parse(headersText) : {};
+    } catch (e) {
+        showAlert('JSON inválido no Body ou Headers', 'danger');
+        return;
+    }
+    
+    const responseArea = document.getElementById('oauth2ResponseArea');
+    const responseContent = document.getElementById('oauth2ResponseContent');
+    
+    responseArea.style.display = 'block';
+    responseContent.innerHTML = `
+        <div class="text-center">
+            <div class="spinner-border text-success" role="status"></div>
+            <p class="mt-2">Testando autenticação...</p>
+        </div>
+    `;
+    
+    try {
+        const response = await fetch('/api-catalog/test-oauth2', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url, method, body, headers })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            oauth2ResponseData = result.response;
+            displayOAuth2Response(result.response);
+        } else {
+            responseContent.innerHTML = `
+                <div class="alert alert-danger">
+                    <strong>Erro:</strong> ${result.message}
+                </div>
+            `;
+        }
+    } catch (error) {
+        responseContent.innerHTML = `
+            <div class="alert alert-danger">
+                <strong>Erro:</strong> ${error.message}
+            </div>
+        `;
+    }
+}
+
+function displayOAuth2Response(response) {
+    const responseContent = document.getElementById('oauth2ResponseContent');
+    const fieldSelector = document.getElementById('oauth2FieldSelector');
+    const fieldsList = document.getElementById('oauth2FieldsList');
+    
+    const statusColor = response.status_code < 300 ? 'success' : 
+                       response.status_code < 400 ? 'warning' : 'danger';
+    
+    let html = `
+        <div class="alert alert-${statusColor}">
+            <strong>Status:</strong> ${response.status_code}
+        </div>
+        <div class="mb-3">
+            <strong>Resposta (JSON):</strong>
+            <pre class="bg-light p-2 rounded" style="max-height: 300px; overflow-y: auto;">${JSON.stringify(response.json, null, 2)}</pre>
+        </div>
+    `;
+    
+    responseContent.innerHTML = html;
+    
+    // Exibir seletor de campos se a resposta for sucesso
+    if (response.status_code >= 200 && response.status_code < 300 && response.json) {
+        fieldSelector.style.display = 'block';
+        displayFieldSelector(response.json, fieldsList);
+    } else {
+        fieldSelector.style.display = 'none';
+    }
+}
+
+function displayFieldSelector(jsonData, container) {
+    const fields = extractJsonFields(jsonData);
+    
+    let html = '<div class="form-check-list">';
+    fields.forEach(field => {
+        const isChecked = selectedOAuth2Fields.includes(field);
+        html += `
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" value="${field}" 
+                       id="field_${field.replace(/\./g, '_')}" 
+                       ${isChecked ? 'checked' : ''}
+                       onchange="toggleOAuth2Field('${field}')">
+                <label class="form-check-label" for="field_${field.replace(/\./g, '_')}">
+                    <code>${field}</code>
+                </label>
+            </div>
+        `;
+    });
+    html += '</div>';
+    
+    container.innerHTML = html;
+}
+
+function extractJsonFields(obj, prefix = '') {
+    let fields = [];
+    
+    for (let key in obj) {
+        if (obj.hasOwnProperty(key)) {
+            const fullKey = prefix ? `${prefix}.${key}` : key;
+            
+            if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
+                // Objeto aninhado - recursão
+                fields = fields.concat(extractJsonFields(obj[key], fullKey));
+            } else {
+                // Campo simples ou array
+                fields.push(fullKey);
+            }
+        }
+    }
+    
+    return fields;
+}
+
+function toggleOAuth2Field(field) {
+    const index = selectedOAuth2Fields.indexOf(field);
+    if (index > -1) {
+        selectedOAuth2Fields.splice(index, 1);
+    } else {
+        selectedOAuth2Fields.push(field);
+    }
+}
+
+function clearOAuth2Response() {
+    const responseArea = document.getElementById('oauth2ResponseArea');
+    const responseContent = document.getElementById('oauth2ResponseContent');
+    const fieldSelector = document.getElementById('oauth2FieldSelector');
+    
+    responseArea.style.display = 'none';
+    responseContent.innerHTML = '';
+    fieldSelector.style.display = 'none';
+    oauth2ResponseData = null;
 }
 
 async function deleteAuth(authId, authName) {

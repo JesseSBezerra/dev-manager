@@ -118,11 +118,31 @@ class DatabaseManager:
                 owner_id INTEGER NOT NULL,
                 base_url TEXT,
                 description TEXT,
+                content_type TEXT DEFAULT 'application/json',
+                auth_id INTEGER,
+                default_headers TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (owner_id) REFERENCES api_owners(id)
+                FOREIGN KEY (owner_id) REFERENCES api_owners(id),
+                FOREIGN KEY (auth_id) REFERENCES api_authentications(id)
             )
         ''')
+        
+        # Migração: Adicionar colunas se não existirem
+        try:
+            cursor.execute("SELECT content_type FROM apis LIMIT 1")
+        except:
+            cursor.execute("ALTER TABLE apis ADD COLUMN content_type TEXT DEFAULT 'application/json'")
+        
+        try:
+            cursor.execute("SELECT auth_id FROM apis LIMIT 1")
+        except:
+            cursor.execute("ALTER TABLE apis ADD COLUMN auth_id INTEGER")
+        
+        try:
+            cursor.execute("SELECT default_headers FROM apis LIMIT 1")
+        except:
+            cursor.execute("ALTER TABLE apis ADD COLUMN default_headers TEXT")
         
         # Tabela de autenticações
         cursor.execute('''

@@ -160,41 +160,91 @@
 
 <!-- Modal Criar API -->
 <div class="modal fade" id="createApiModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title"><i class="bi bi-plus-circle"></i> Nova API</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <div class="mb-3">
-                    <label for="apiName" class="form-label">Nome *</label>
-                    <input type="text" class="form-control" id="apiName" required>
-                </div>
-                <div class="mb-3">
-                    <label for="apiOwner" class="form-label">Dono *</label>
-                    <div class="input-group">
-                        <select class="form-select" id="apiOwner" required>
-                            <option value="">Selecione...</option>
-                        </select>
-                        <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#createOwnerModal">
-                            <i class="bi bi-plus"></i>
-                        </button>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="apiName" class="form-label">Nome *</label>
+                        <input type="text" class="form-control" id="apiName" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="apiOwner" class="form-label">Dono *</label>
+                        <div class="input-group">
+                            <select class="form-select" id="apiOwner" required>
+                                <option value="">Selecione...</option>
+                            </select>
+                            <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#createOwnerModal">
+                                <i class="bi bi-plus"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
+                
                 <div class="mb-3">
                     <label for="apiBaseUrl" class="form-label">Base URL</label>
                     <input type="text" class="form-control" id="apiBaseUrl" placeholder="https://api.example.com">
                 </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="apiContentType" class="form-label">Content-Type Padrão *</label>
+                        <select class="form-select" id="apiContentType" required>
+                            <option value="application/json">application/json</option>
+                            <option value="multipart/form-data">multipart/form-data</option>
+                            <option value="application/x-www-form-urlencoded">application/x-www-form-urlencoded</option>
+                            <option value="application/xml">application/xml</option>
+                            <option value="text/plain">text/plain</option>
+                            <option value="text/html">text/html</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="apiAuth" class="form-label">Autenticação</label>
+                        <select class="form-select" id="apiAuth">
+                            <option value="">Nenhuma</option>
+                        </select>
+                        <small class="text-muted">Autenticação padrão para esta API</small>
+                    </div>
+                </div>
+                
                 <div class="mb-3">
                     <label for="apiDescription" class="form-label">Descrição</label>
                     <textarea class="form-control" id="apiDescription" rows="2"></textarea>
+                </div>
+                
+                <!-- Headers Padrão -->
+                <div class="card border-info mb-3">
+                    <div class="card-header bg-info text-white">
+                        <h6 class="mb-0"><i class="bi bi-code-square"></i> Headers Padrão (JSON)</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-2">
+                            <textarea class="form-control font-monospace" id="apiHeaders" rows="6" placeholder='{"Authorization": "Bearer ${access_token}", "X-Custom-Header": "value"}'></textarea>
+                            <small class="text-muted">
+                                Use <code>${campo}</code> para referenciar campos da autenticação selecionada.
+                                Exemplo: <code>{"Authorization": "Bearer ${access_token}"}</code>
+                            </small>
+                        </div>
+                        
+                        <!-- Campos disponíveis da autenticação -->
+                        <div id="apiAuthFieldsInfo" style="display: none;">
+                            <hr>
+                            <h6 class="text-info"><i class="bi bi-info-circle"></i> Campos Disponíveis da Autenticação:</h6>
+                            <div id="apiAuthFieldsList" class="bg-light p-2 rounded">
+                                <!-- Preenchido via JavaScript -->
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-primary" id="createApiBtn">
-                    <i class="bi bi-plus-circle"></i> Criar
+                    <i class="bi bi-plus-circle"></i> Criar API
                 </button>
             </div>
         </div>
@@ -203,7 +253,7 @@
 
 <!-- Modal Criar Autenticação -->
 <div class="modal fade" id="createAuthModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header bg-warning">
                 <h5 class="modal-title"><i class="bi bi-plus-circle"></i> Nova Autenticação</h5>
@@ -229,20 +279,89 @@
                         <option value="oauth2">OAuth 2.0</option>
                     </select>
                 </div>
-                <div class="mb-3">
-                    <label for="authToken" class="form-label">Token/Chave</label>
-                    <input type="text" class="form-control font-monospace" id="authToken">
+                
+                <!-- Campos para tipos não-OAuth2 -->
+                <div id="standardAuthFields">
+                    <div class="mb-3">
+                        <label for="authToken" class="form-label">Token/Chave</label>
+                        <input type="text" class="form-control font-monospace" id="authToken">
+                    </div>
+                    <div class="mb-3">
+                        <label for="authTokenField" class="form-label">Campo do Token na Resposta</label>
+                        <input type="text" class="form-control" id="authTokenField" placeholder="Ex: access_token">
+                        <small class="text-muted">Campo JSON que contém o token na resposta de autenticação</small>
+                    </div>
                 </div>
-                <div class="mb-3">
-                    <label for="authTokenField" class="form-label">Campo do Token na Resposta</label>
-                    <input type="text" class="form-control" id="authTokenField" placeholder="Ex: access_token">
-                    <small class="text-muted">Campo JSON que contém o token na resposta de autenticação</small>
+                
+                <!-- Campos específicos para OAuth2 -->
+                <div id="oauth2Fields" style="display: none;">
+                    <div class="card border-success mb-3">
+                        <div class="card-header bg-success text-white">
+                            <h6 class="mb-0"><i class="bi bi-gear"></i> Configuração OAuth2</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-8 mb-3">
+                                    <label for="oauth2Url" class="form-label">URL de Autenticação *</label>
+                                    <input type="text" class="form-control" id="oauth2Url" placeholder="https://api.example.com/oauth/token">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="oauth2Method" class="form-label">Método *</label>
+                                    <select class="form-select" id="oauth2Method">
+                                        <option value="POST">POST</option>
+                                        <option value="GET">GET</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="oauth2Body" class="form-label">Body (JSON) *</label>
+                                <textarea class="form-control font-monospace" id="oauth2Body" rows="5" placeholder='{"client_id": "...", "client_secret": "...", "grant_type": "client_credentials"}'></textarea>
+                                <small class="text-muted">Parâmetros necessários para obter o token</small>
+                            </div>
+                            <div class="mb-3">
+                                <label for="oauth2Headers" class="form-label">Headers Customizados (JSON)</label>
+                                <textarea class="form-control font-monospace" id="oauth2Headers" rows="3" placeholder='{"Content-Type": "application/json"}'></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="oauth2TokenField" class="form-label">Campo do Token na Resposta *</label>
+                                <input type="text" class="form-control" id="oauth2TokenField" placeholder="Ex: access_token" value="access_token">
+                                <small class="text-muted">Nome do campo JSON que contém o token</small>
+                            </div>
+                            
+                            <button type="button" class="btn btn-success" id="testOAuth2Btn">
+                                <i class="bi bi-play-circle"></i> Testar Autenticação
+                            </button>
+                            <button type="button" class="btn btn-secondary" id="clearOAuth2TestBtn">
+                                <i class="bi bi-x-circle"></i> Limpar Resposta
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Área de Resposta OAuth2 -->
+                    <div id="oauth2ResponseArea" style="display: none;">
+                        <div class="card border-info mb-3">
+                            <div class="card-header bg-info text-white">
+                                <h6 class="mb-0"><i class="bi bi-check-circle"></i> Resposta da Autenticação</h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="oauth2ResponseContent"></div>
+                                
+                                <!-- Seleção de Campos -->
+                                <div id="oauth2FieldSelector" style="display: none;">
+                                    <hr>
+                                    <h6><i class="bi bi-list-check"></i> Selecione os campos para reutilizar:</h6>
+                                    <small class="text-muted mb-2 d-block">Estes campos ficarão disponíveis para uso em outras requests</small>
+                                    <div id="oauth2FieldsList"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-warning" id="createAuthBtn">
-                    <i class="bi bi-plus-circle"></i> Criar
+                    <i class="bi bi-plus-circle"></i> Salvar Autenticação
                 </button>
             </div>
         </div>
